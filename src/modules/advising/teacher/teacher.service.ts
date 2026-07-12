@@ -1,12 +1,12 @@
-import type { EventBus } from "../../events/index.js";
-import type { AdvisingRepository } from "./advising.repository.js";
-import { HttpError } from "../../shared/errors/http-error.js";
-import { limaDateString, validateCreateAdvising } from "./advising.logic.js";
-import type { CreateAdvisingBody } from "./advising.schemas.js";
+import type { EventBus } from "../../../events/index.js";
+import type { TeacherRepository } from "./teacher.repository.js";
+import { HttpError } from "../../../shared/errors/http-error.js";
+import { limaDateString, validateCreateAdvising } from "./teacher.logic.js";
+import type { CreateAdvisingBody } from "./teacher.schemas.js";
 
-export class AdvisingService {
+export class TeacherService {
   constructor(
-    readonly repository: AdvisingRepository,
+    readonly repository: TeacherRepository,
     readonly events: EventBus,
   ) {}
 
@@ -35,7 +35,6 @@ export class AdvisingService {
       const period = await this.repository.getActivePeriod();
       if (!period) throw new HttpError(409, "No hay período académico activo.", "NO_ACTIVE_PERIOD");
 
-      // Autorización: la sección debe pertenecer al docente (titular o JP).
       const section = await this.repository.findSectionOwnedByTeacher(body.sectionId, teacherId);
       if (!section) {
         throw new HttpError(403, "No puede crear asesorías en una sección que no es suya.", "SECTION_FORBIDDEN");
@@ -123,7 +122,7 @@ export class AdvisingService {
 
   private wrap(e: unknown, where: string): HttpError {
     if (e instanceof HttpError) return e;
-    console.error(`DB Error in advising.service ${where}`, e);
+    console.error(`DB Error in teacher.service ${where}`, e);
     return new HttpError(500, "Error interno del servidor.", "INTERNAL_ERROR");
   }
 }

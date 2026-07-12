@@ -144,16 +144,6 @@ export const createCourseDetailRoutes = (controller: CourseDetailController) => 
 
   app.get("/sections/:sectionId/announcements", (c) => controller.getAnnouncements(c));
 
-  // El listado de asesorías del alumno (con kind/fecha/dictanteRol/asistentes de
-  // HU18 y myRsvp de HU17) se resuelve por las capas controller→service→repository.
-  app.get("/sections/:sectionId/advising", (c) => controller.getAdvising(c));
-
-  // HU17: confirmar/cancelar asistencia a una asesoría. Solo alumnos (un token de
-  // docente no lleva `studentId` → 403 en el controller). El módulo `advising`
-  // está gateado a `teacher`, por eso estos endpoints viven en course-detail.
-  app.post("/advising/:sessionId/rsvp", (c) => controller.confirmRsvp(c));
-  app.delete("/advising/:sessionId/rsvp", (c) => controller.cancelRsvp(c));
-
   app.get("/sections/:sectionId/contacts", async (c) => {
     const sectionId = Number(c.req.param("sectionId"));
     try {

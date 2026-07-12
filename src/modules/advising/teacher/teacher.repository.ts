@@ -1,4 +1,4 @@
-import type { db } from "../../db/index.js";
+import type { db } from "../../../db/index.js";
 import { sql } from "drizzle-orm";
 import type {
   ActivePeriod,
@@ -6,8 +6,8 @@ import type {
   Attendee,
   DictanteRol,
   TeacherSection,
-} from "./advising.types.js";
-import type { AdvisingModality, ExistingAdvising } from "./advising.logic.js";
+} from "./teacher.types.js";
+import type { AdvisingModality, ExistingAdvising } from "./teacher.logic.js";
 
 const dayName = (day: number) =>
   ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"][day - 1] ?? "Por definir";
@@ -25,7 +25,6 @@ const splitName = (fullName: string) => {
   return { firstName: fullName, lastName: "" };
 };
 
-// Fila cruda de una asesoría con datos de curso/sección y conteo de asistentes.
 type SessionRow = {
   id: number;
   section_id: number | null;
@@ -91,7 +90,7 @@ const toView = (row: SessionRow): AdvisingSessionView => ({
   rol: row.rol,
 });
 
-export class AdvisingRepository {
+export class TeacherRepository {
   constructor(readonly database: typeof db) {}
 
   async getActivePeriod(): Promise<ActivePeriod | null> {
@@ -103,7 +102,6 @@ export class AdvisingRepository {
     return row ? { id: Number(row.id), startDate: row.start_date, endDate: row.end_date } : null;
   }
 
-  /** Secciones del período donde el docente es profesor titular o JP. */
   async findTeacherSections(teacherId: number, periodId: number): Promise<TeacherSection[]> {
     const rows = (await this.database.execute(sql`
       select
@@ -133,7 +131,6 @@ export class AdvisingRepository {
     }));
   }
 
-  /** Todas las asesorías del docente (recurrentes + extras), extras próximas primero. */
   async findTeacherSessions(teacherId: number): Promise<AdvisingSessionView[]> {
     const rows = (await this.database.execute(sql`
       ${SESSION_SELECT}
@@ -151,7 +148,6 @@ export class AdvisingRepository {
     return rows[0] ? toView(rows[0]) : null;
   }
 
-  /** Sección con su rol para el docente, o null si no le pertenece (403). */
   async findSectionOwnedByTeacher(
     sectionId: number,
     teacherId: number,
@@ -171,7 +167,6 @@ export class AdvisingRepository {
       : null;
   }
 
-  /** Asesorías propias (para el chequeo de solape en la lógica pura). */
   async findOwnSessionsForOverlap(teacherId: number): Promise<ExistingAdvising[]> {
     const rows = (await this.database.execute(sql`
       select cas.kind, cas.day_of_week, cas.session_date::text as session_date,
@@ -223,7 +218,6 @@ export class AdvisingRepository {
     return view;
   }
 
-  /** Datos mínimos para autorizar borrado/consulta de asistentes (distingue 404 de 403). */
   async findSessionOwnership(
     id: number,
   ): Promise<{ id: number; teacherId: number; kind: "recurring" | "extra" } | null> {
@@ -234,7 +228,6 @@ export class AdvisingRepository {
     return row ? { id: Number(row.id), teacherId: Number(row.teacher_id), kind: row.kind } : null;
   }
 
-  /** Borra la asesoría y sus RSVP en una transacción (FK advising_rsvp → sesión). */
   async deleteSessionWithRsvps(id: number): Promise<void> {
     await this.database.transaction(async (tx) => {
       await tx.execute(sql`delete from advising_rsvp where advising_session_id = ${id}`);

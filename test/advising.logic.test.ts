@@ -16,7 +16,7 @@ import {
   rangesOverlap,
   validateCreateAdvising,
   type ExistingAdvising,
-} from "../src/modules/advising/advising.logic.js";
+} from "../src/modules/advising/teacher/teacher.logic.js";
 
 describe("isoDayOfWeek", () => {
   test("mapea a ISO 1=Lunes … 7=Domingo sin desfase horario", () => {

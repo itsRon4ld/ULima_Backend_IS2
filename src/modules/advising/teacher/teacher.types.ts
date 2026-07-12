@@ -1,9 +1,7 @@
-import type { AdvisingModality } from "./advising.logic.js";
+import type { AdvisingModality } from "./teacher.logic.js";
 
-/** Etiqueta del docente respecto de una sección: profesor titular o JP. */
 export type DictanteRol = "Profesor" | "JP";
 
-/** Sección donde el docente dicta (para el formulario de creación). */
 export type TeacherSection = {
   sectionId: number;
   courseOfferingId: number;
@@ -12,7 +10,6 @@ export type TeacherSection = {
   rol: DictanteRol;
 };
 
-/** Vista de una asesoría para el docente (recurrente o extra). */
 export type AdvisingSessionView = {
   id: number;
   sectionId: number | null;

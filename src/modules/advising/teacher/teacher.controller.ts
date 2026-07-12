@@ -1,11 +1,11 @@
 import type { Context } from "hono";
-import type { AdvisingService } from "./advising.service.js";
-import { HttpError } from "../../shared/errors/http-error.js";
-import { validateJson, validateParams } from "../../shared/middleware/validate-dto.js";
-import { advisingIdParamSchema, createAdvisingSchema } from "./advising.schemas.js";
+import type { TeacherService } from "./teacher.service.js";
+import { HttpError } from "../../../shared/errors/http-error.js";
+import { validateJson, validateParams } from "../../../shared/middleware/validate-dto.js";
+import { advisingIdParamSchema, createAdvisingSchema } from "./teacher.schemas.js";
 
-export class AdvisingController {
-  constructor(readonly service: AdvisingService) {}
+export class TeacherController {
+  constructor(readonly service: TeacherService) {}
 
   private requireTeacherId(c: Context): number {
     const teacherId = c.get("teacherId");

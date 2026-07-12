@@ -24,7 +24,7 @@
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.0",
     "drizzle-orm": "^0.45.2",
-    "firebase-admin": "12.1.0",
+    "firebase-admin": "^14.1.0",
     "google-auth-library": "^10.7.0",
     "hono": "^4.6.0",
     "jsonwebtoken": "^9.0.2",
