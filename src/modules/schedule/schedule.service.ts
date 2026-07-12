@@ -459,7 +459,7 @@ export class ScheduleService {
     const totalEnrollments = await this.repository.countActiveEnrollments(sectionId);
     const assessments = await this.repository.findTeacherSectionAssessmentsStatus(sectionId);
 
-    const list = assessments.map((ass) => {
+    const list = await Promise.all(assessments.map(async (ass) => {
       let status = "Sin cargar";
       if (totalEnrollments > 0) {
         if (ass.loaded_count >= totalEnrollments) {
@@ -468,6 +468,7 @@ export class ScheduleService {
           status = "Carga parcial";
         }
       }
+      const isNotified = await this.repository.findWasAssessmentNotified(sectionId, ass.assessment_id);
       return {
         id: String(ass.assessment_id),
         code: ass.assessment_code,
@@ -475,8 +476,9 @@ export class ScheduleService {
         status,
         loadedCount: ass.loaded_count,
         totalCount: totalEnrollments,
+        isNotified,
       };
-    });
+    }));
 
     return { assessments: list };
   }
@@ -498,20 +500,17 @@ export class ScheduleService {
     }
 
     const students = await this.repository.findActiveStudentsBySectionId(sectionId);
-    
-    // Alerta de notas cargadas en su totalidad
-    const title = `Notas disponibles: ${sectionInfo.courseName}`;
-    const message = `Se han publicado las notas de la evaluación ${assessmentInfo.code}: ${assessmentInfo.name} de ${sectionInfo.courseName} (Sección ${sectionInfo.sectionCode}) en su totalidad.`;
 
-    let notifiedCount = 0;
+    // Título único por evaluación (incluye código) → cada eval tiene alerta independiente
+    const title = `Notas disponibles: ${assessmentInfo.code} - ${sectionInfo.courseName}`;
+    // El tag [notif-sX-aY] al final permite detectar si ya se envió (para inicializar switch).
+    const message = `El docente ha publicado las notas de ${assessmentInfo.code}: ${assessmentInfo.name} de ${sectionInfo.courseName} (Sección ${sectionInfo.sectionCode}).`;
+
+    // Siempre crear nueva alerta (sin chequeo de duplicados) para permitir re-envíos
     for (const student of students) {
-      const exists = await this.repository.findAlertByTitle(student.studentId, title);
-      if (!exists) {
-        await this.repository.createAlert(student.studentId, "academic_risk", title, message);
-        notifiedCount++;
-      }
+      await this.repository.createAlert(student.studentId, "academic_risk", title, message);
     }
 
-    return { ok: true, notifiedCount };
+    return { ok: true, notifiedCount: students.length };
   }
 }

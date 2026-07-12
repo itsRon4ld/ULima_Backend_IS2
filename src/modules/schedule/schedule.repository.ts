@@ -342,6 +342,23 @@ export class ScheduleRepository {
     }
   }
 
+  async countGradedForAssessment(assessmentId: number, sectionId: number): Promise<number> {
+    try {
+      const rows = await this.database.execute(sql`
+        select count(ss.id)::int as graded
+        from enrollment e
+        left join student_score ss on ss.assessment_id = ${assessmentId}
+          and ss.enrollment_id = e.id
+          and ss.value is not null
+        where e.section_id = ${sectionId} and e.status = 'active'
+      `) as unknown as Array<{ graded: number }>;
+      return rows[0]?.graded ?? 0;
+    } catch (e) {
+      console.error('DB Error in countGradedForAssessment', e);
+      return 0;
+    }
+  }
+
   async findAlertByTitle(studentId: number, title: string): Promise<boolean> {
     try {
       const rows = await this.database.execute(sql`
@@ -350,6 +367,30 @@ export class ScheduleRepository {
       return rows.length > 0;
     } catch (e) {
       console.error('DB Error in findAlertByTitle', e);
+      return false;
+    }
+  }
+
+  /**
+   * Verifica si algún alumno de la sección recibió una alerta de notas
+   * para la evaluación dada (patrón de título único por assessmentId+sectionId).
+   * Usado para inicializar el estado del switch en el frontend.
+   */
+  async findWasAssessmentNotified(sectionId: number, assessmentId: number): Promise<boolean> {
+    try {
+      const rows = await this.database.execute(sql`
+        select al.id from alert al
+        join enrollment e on e.student_id = al.student_id and e.section_id = ${sectionId} and e.status = 'active'
+        join section sec on sec.id = e.section_id
+        join course_offering co on co.id = sec.course_offering_id
+        join course c on c.id = co.course_id
+        join assessment ass on ass.id = ${assessmentId}
+        where al.title = 'Notas disponibles: ' || ass.code || ' - ' || c.name
+        limit 1
+      `) as unknown as any[];
+      return rows.length > 0;
+    } catch (e) {
+      console.error('DB Error in findWasAssessmentNotified', e);
       return false;
     }
   }
