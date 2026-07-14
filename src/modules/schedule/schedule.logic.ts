@@ -66,6 +66,17 @@ function toMinutes(time: string): number {
 }
 
 /**
+ * Regla de dominio de alta carga académica: una semana es de alta carga
+ * cuando concentra 3 o más evaluaciones (ver reglas de dominio, alertas high_load).
+ * Única fuente de verdad usada por mergeScheduleData y por ScheduleService.getWeeklyLoad.
+ */
+export const HIGH_LOAD_MIN_ASSESSMENTS = 3;
+
+export function isHighLoadCount(assessmentCount: number): boolean {
+  return assessmentCount >= HIGH_LOAD_MIN_ASSESSMENTS;
+}
+
+/**
  * academicWeekOf — Devuelve el número de semana académica (1-16).
  * Semana 1 = 2026-04-06. Devuelve -1 si está fuera del período.
  * CC interna = 3 (ramas vacío / antes-inicio / después-fin).
@@ -113,7 +124,7 @@ export function mergeScheduleData(input: MergeInput): MergeResult {
   const evalsInActiveWeek = (assessments ?? []).filter(
     (a) => a.weekNumber === activeWeek && a.date !== ""
   ).length;
-  const isHighLoadWeek = evalsInActiveWeek >= 3;
+  const isHighLoadWeek = isHighLoadCount(evalsInActiveWeek);
 
   // [C2][C3] Construir lookup de evaluaciones por "fecha::codigoSeccion"
   const evalByDateSection = new Map<string, Assessment[]>();

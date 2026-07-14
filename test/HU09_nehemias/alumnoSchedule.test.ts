@@ -21,7 +21,7 @@ import {
   type MergeInput,
   type Section,
   type ScheduleFilterPayload,
-} from "./schedule.logic";
+} from "../../src/modules/schedule/schedule.logic.js";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 

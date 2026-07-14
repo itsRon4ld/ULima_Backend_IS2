@@ -1,5 +1,7 @@
 import type { EventBus } from "../../events/index.js";
 import { HttpError } from "../../shared/errors/http-error.js";
+import { isHighLoadCount } from "./schedule.logic.js";
+import { computeGradesStatus } from "./teacherSchedule.logic.js";
 import type { ScheduleRepository, RawWeekRow, RawAssessmentRow } from "./schedule.repository.js";
 import type {
   SessionsResponse,
@@ -255,7 +257,7 @@ export class ScheduleService {
         startDate: week.start_date,
         endDate: week.end_date,
         assessmentCount: count,
-        isHighLoad: count >= 3,
+        isHighLoad: isHighLoadCount(count),
       });
     }
 
@@ -460,14 +462,7 @@ export class ScheduleService {
     const assessments = await this.repository.findTeacherSectionAssessmentsStatus(sectionId);
 
     const list = await Promise.all(assessments.map(async (ass) => {
-      let status = "Sin cargar";
-      if (totalEnrollments > 0) {
-        if (ass.loaded_count >= totalEnrollments) {
-          status = "Completo";
-        } else if (ass.loaded_count > 0) {
-          status = "Carga parcial";
-        }
-      }
+      const status = computeGradesStatus(ass.loaded_count, totalEnrollments);
       const isNotified = await this.repository.findWasAssessmentNotified(sectionId, ass.assessment_id);
       return {
         id: String(ass.assessment_id),

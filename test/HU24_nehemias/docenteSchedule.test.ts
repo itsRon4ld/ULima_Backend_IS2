@@ -18,7 +18,7 @@ import {
   validateCourseBlockInput,
   computeGradesStatus,
   type CourseBlockInput,
-} from "./teacherSchedule.logic";
+} from "../../src/modules/schedule/teacherSchedule.logic.js";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
