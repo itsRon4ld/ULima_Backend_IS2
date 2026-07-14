@@ -32,10 +32,13 @@ import type { StudentNotifyRow } from "../../src/modules/attendance-risk/attenda
  * | C6| P6 singular: 1 notificado     | "Se ha notificado a 1 alumno."              |
  * | C7| límite 35% (ciclo 6)          | en_riesgo a 3 faltas, mensaje con (35%)     |
  * | C8| frontera: 25% exacto          | P3(F) por '>' estricto -> nadie notificado  |
+ * | C9| a 1 falta (24h/100h)          | continue (preventiva SOLO a 2 o 3 faltas)   |
+ * |C10| filas normales, notified = 0  | "No hay alumnos que notificar." con datos   |
  *
  * C7 y C8 se añadieron tras la 1ª corrida de mutación (Stryker): la lógica de
  * límites está DUPLICADA en notifyStudents (l.164-179) y los mutantes
  * cycle>=6→>6, pct>limit→>= y faltas!==3→true sobrevivían a C1-C6.
+ * C9 y C10 completan la batería a 10 caminos, uno por región del grafo (V(G)=10).
  */
 
 const noopEvents = {} as unknown as EventBus;
@@ -166,5 +169,30 @@ describe("CAJA BLANCA · AttendanceRiskService.notifyStudents (HU30)", () => {
     const res = await service.notifyStudents(1);
 
     expect(res.message).toBe("Se ha notificado a 1 alumno.");
+  });
+
+  test("C9: a 1 falta del límite (24h/100h) -> continue (la preventiva es SOLO a 2 o 3 faltas)", async () => {
+    // faltas = ceil((25 - 24) / 2) = 1 -> ni 2 ni 3 -> no se notifica.
+    const { service, captured } = spyService([nrow({ absent_hours: "24" })]);
+
+    const res = await service.notifyStudents(1);
+
+    expect(captured).toHaveLength(0);
+    expect(res.notified).toBe(0);
+  });
+
+  test("C10: filas presentes pero todas normales -> 'No hay alumnos que notificar.' (rama notified = 0 con datos)", async () => {
+    // A diferencia de C1 (que descarta por 0 horas), aquí las filas SÍ se evalúan
+    // y ninguna alcanza el umbral: cubre el ternario notified > 0 en falso con datos reales.
+    const { service, captured } = spyService([
+      nrow({ student_id: 1, absent_hours: "0" }),
+      nrow({ student_id: 2, absent_hours: "10" }),
+    ]);
+
+    const res = await service.notifyStudents(1);
+
+    expect(captured).toHaveLength(0);
+    expect(res.notified).toBe(0);
+    expect(res.message).toBe("No hay alumnos que notificar.");
   });
 });

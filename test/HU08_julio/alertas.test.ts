@@ -77,19 +77,25 @@ const makeEvents = () => ({ emit: mock(() => undefined) });
 // Complejidad Ciclomática del método:
 //   Nodo 1: entrada
 //   Nodo 2: for (group of courseGroups)                      → +1
-//   Nodo 3:   if isAcademicRisk(...)                         → +1
-//   Nodo 4:     if (!exists) → createAlert                   → +1
-//   Nodo 5: for (week of highLoadWeeks)                      → +1
-//   Nodo 6:   if (!exists) → createAlert                     → +1
-//   CC = 1 + 5 = 6  (> 4 ✓)
+//   Nodo 3:   if isCriticalRisk(...)                         → +1
+//   Nodo 4:     if (!exists) → createAlert crítico           → +1
+//   Nodo 5:       ternario req > 20 (mensaje imposible/req)  → +1
+//   Nodo 6:   if isAcademicRisk(...)                         → +1
+//   Nodo 7:     if (!exists) → createAlert                   → +1
+//   Nodo 8: for (week of highLoadWeeks)                      → +1
+//   Nodo 9:   if (!exists) → createAlert                     → +1
+//   CC = 1 + 8 = 9  (> 4 ✓)
 //
-// Caminos cubiertos:
+// Caminos cubiertos (9 caminos para V(G) = 9):
 //   Path 1 – sin enrollments ni semanas de alta carga         (loops vacíos)
 //   Path 2 – riesgo académico detectado, alerta NO existe     (crea alerta)
 //   Path 3 – riesgo académico detectado, alerta YA existe     (no duplica)
 //   Path 4 – alta carga detectada, alerta NO existe           (crea alerta)
 //   Path 5 – alta carga detectada, alerta YA existe           (no duplica)
 //   Path 6 – múltiples cursos: algunos en riesgo, otros no
+//   Path 7 – riesgo CRÍTICO (req ≤ 20), alerta NO existe      (crea crítica, no académica)
+//   Path 8 – riesgo CRÍTICO imposible (req > 20)              (mensaje "ya no es posible")
+//   Path 9 – riesgo CRÍTICO, alerta YA existe                 (no duplica)
 describe("[CAJA BLANCA] AlertsService.getAlertsForStudent – caminos del grafo de control", () => {
 
   test("Path 1 – sin enrollments ni semanas cargadas: no crea alertas", async () => {
@@ -180,6 +186,66 @@ describe("[CAJA BLANCA] AlertsService.getAlertsForStudent – caminos del grafo 
     // Solo debe crear 1 alerta (Cálculo I), no para Programación
     expect(repo.createAlert).toHaveBeenCalledTimes(1);
     expect(repo.createAlert).toHaveBeenCalledWith(1, "academic_risk", "Riesgo Académico: Cálculo I", expect.any(String));
+  });
+
+  test("Path 7 – riesgo CRÍTICO (req ≤ 20) y alerta no existe: crea la crítica y omite la académica", async () => {
+    const repo = makeRepo();
+    // graded = 50 (30+20), suma ponderada = 8*30 + 1.5*20 = 270, resta 50 sin calificar.
+    // req = (10.5*100 - 270) / 50 = 15.6 > 15 → crítico, y 15.6 ≤ 20 → mensaje con la nota requerida.
+    repo.getActiveEnrollmentsWithScores.mockImplementation(async () => [
+      makeEnrollment({ assessment_id: 10, assessment_weight: "30", score_value: "8" }),
+      makeEnrollment({ assessment_id: 11, assessment_weight: "20", score_value: "1.5" }),
+      makeEnrollment({ assessment_id: 12, assessment_weight: "50", score_value: null }),
+    ]);
+    repo.findAlertByTitle.mockImplementation(async () => false);
+    const svc = new AlertsService(repo as any, makeEvents() as any);
+
+    await svc.getAlertsForStudent(1);
+
+    // Se crea SOLO la alerta crítica (la precedencia evita duplicar con la académica).
+    expect(repo.createAlert).toHaveBeenCalledTimes(1);
+    expect(repo.createAlert).toHaveBeenCalledWith(
+      1,
+      "academic_risk",
+      "Riesgo Crítico: Cálculo I",
+      expect.stringContaining("15.6"),
+    );
+  });
+
+  test("Path 8 – riesgo CRÍTICO imposible (req > 20): el mensaje indica que ya no se puede aprobar", async () => {
+    const repo = makeRepo();
+    // graded = 50 con suma 0 (todo desaprobado con 0), resta 50.
+    // req = (10.5*100 - 0) / 50 = 21 > 20 → rama del mensaje "ya no es posible".
+    repo.getActiveEnrollmentsWithScores.mockImplementation(async () => [
+      makeEnrollment({ assessment_id: 10, assessment_weight: "50", score_value: "0" }),
+      makeEnrollment({ assessment_id: 11, assessment_weight: "50", score_value: null }),
+    ]);
+    repo.findAlertByTitle.mockImplementation(async () => false);
+    const svc = new AlertsService(repo as any, makeEvents() as any);
+
+    await svc.getAlertsForStudent(1);
+
+    expect(repo.createAlert).toHaveBeenCalledWith(
+      1,
+      "academic_risk",
+      "Riesgo Crítico: Cálculo I",
+      expect.stringContaining("ya no es posible"),
+    );
+  });
+
+  test("Path 9 – riesgo CRÍTICO pero la alerta ya existe: NO duplica", async () => {
+    const repo = makeRepo();
+    repo.getActiveEnrollmentsWithScores.mockImplementation(async () => [
+      makeEnrollment({ assessment_id: 10, assessment_weight: "30", score_value: "8" }),
+      makeEnrollment({ assessment_id: 11, assessment_weight: "20", score_value: "1.5" }),
+      makeEnrollment({ assessment_id: 12, assessment_weight: "50", score_value: null }),
+    ]);
+    repo.findAlertByTitle.mockImplementation(async () => true); // ya existe
+    const svc = new AlertsService(repo as any, makeEvents() as any);
+
+    await svc.getAlertsForStudent(1);
+
+    expect(repo.createAlert).not.toHaveBeenCalled();
   });
 });
 

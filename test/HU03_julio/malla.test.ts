@@ -3,10 +3,15 @@
  * Archivo : test/malla-curricular/malla.test.ts
  * Runner  : bun test (compatible con Jest API: describe / test / expect)
  *
- * Rúbrica cubierta:
- *   [A] CAJA BLANCA  → getCurriculum() del CurriculumService (CC = 6)
- *   [B] CAJA NEGRA   → Payload de actualización de simulación (> 4 campos)
+ * Contenido:
+ *   [A] CAJA BLANCA de apoyo → getCurriculum() del CurriculumService (CC = 6)
+ *   [B] APOYO        → validación del payload de simulación (3 campos reales,
+ *                      no alcanza los > 4 campos que exige la caja negra)
  *   [C] UNIT TESTS   → 6 casos sobre la lógica pura de construcción de la malla
+ *
+ * NOTA DE RÚBRICA: la caja blanca oficial de este integrante es
+ *   AlertsService.getAlertsForStudent (V(G)=9) y la caja negra oficial es
+ *   aggregateCourseScores (5 campos), ambas en test/HU08_julio/alertas.test.ts.
  */
 
 import { describe, test, expect, mock, beforeEach } from "bun:test";
@@ -177,7 +182,7 @@ describe("[CAJA BLANCA] getCurriculum – caminos del grafo de control", () => {
 //   3. status          (enum: planned | simulated_completed | simulated_available)
 //   4. curriculumId    (resuelto internamente; simulamos distintos valores)
 //   5. courseExists    (boolean que depende de la BD)
-describe("[CAJA NEGRA] updateSimulation – particiones de equivalencia del payload", () => {
+describe("[APOYO · PARTICIONES] updateSimulation (payload de 3 campos)", () => {
 
   test("BB-1 – payload válido con status 'planned': persiste y devuelve confirmación", async () => {
     const repo = makeRepo();

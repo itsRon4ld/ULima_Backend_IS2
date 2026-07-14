@@ -43,6 +43,12 @@ import {
  * Alcance:
  *   Estas pruebas explican reglas atomicas. Para exposicion se pueden tomar U1
  *   a U4 como las cuatro unitarias principales, y dejar U5-U6 como respaldo.
+ *
+ * PRUEBA UNITARIA DE LA RUBRICA (un solo metodo, 5 casos):
+ *   El bloque final concentra 5 casos sobre UN UNICO metodo,
+ *   validateSocialLink(), que cubren sus 4 salidas posibles
+ *   (ok, invalid_url, invalid_domain, label_required) mas el valor
+ *   limite del label compuesto solo por espacios.
  */
 
 describe("UNITARIA · HU25 networking.logic", () => {
@@ -83,5 +89,29 @@ describe("UNITARIA · HU25 networking.logic", () => {
       url: "  https://github.com/mel  ",
       label: "   ",
     })).toEqual({ platform: "github", url: "https://github.com/mel", label: null });
+  });
+});
+
+// Prueba unitaria de la rubrica: UN solo metodo (validateSocialLink) con 5 casos
+// que validan su correcto funcionamiento cubriendo las 4 salidas posibles.
+describe("UNITARIA · HU25 validateSocialLink (un metodo, 5 casos)", () => {
+  test("V1: enlace oficial de la plataforma retorna ok", () => {
+    expect(validateSocialLink({ platform: "github", url: "https://github.com/mel" }).status).toBe("ok");
+  });
+
+  test("V2: url que no es http/https retorna invalid_url", () => {
+    expect(validateSocialLink({ platform: "github", url: "ftp://github.com/mel" }).status).toBe("invalid_url");
+  });
+
+  test("V3: dominio que no corresponde a la plataforma retorna invalid_domain", () => {
+    expect(validateSocialLink({ platform: "linkedin", url: "https://linkedin.fake.io/mel" }).status).toBe("invalid_domain");
+  });
+
+  test("V4: website sin label retorna label_required", () => {
+    expect(validateSocialLink({ platform: "website", url: "https://mel.dev" }).status).toBe("label_required");
+  });
+
+  test("V5: valor limite, label de solo espacios cuenta como ausente", () => {
+    expect(validateSocialLink({ platform: "other", url: "https://mel.dev", label: "   " }).status).toBe("label_required");
   });
 });

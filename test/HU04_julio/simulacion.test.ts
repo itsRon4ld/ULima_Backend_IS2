@@ -3,10 +3,17 @@
  * Archivo : test/estado-cursos/simulacion.test.ts
  * Runner  : bun test (compatible con Jest API)
  *
- * Rúbrica cubierta:
- *   [A] CAJA BLANCA  → resolveNextStatus() función con CC ≥ 5 (lógica de transiciones)
- *   [B] CAJA NEGRA   → Payload completo de simulación con > 4 campos de entrada
+ * Contenido:
+ *   [A] APOYO        → resolveNextStatus(): modelo de transiciones de la UI,
+ *                      definido en este archivo como especificación ejecutable
+ *                      (NO es código de producción; no cuenta como caja blanca)
+ *   [B] APOYO        → validación del payload de simulación (3 campos reales)
  *   [C] UNIT TESTS   → 6 casos sobre updateSimulation y deleteSimulation
+ *
+ * NOTA DE RÚBRICA: la caja blanca oficial de este integrante es
+ *   AlertsService.getAlertsForStudent (V(G)=9) y la caja negra oficial es
+ *   aggregateCourseScores (5 campos), ambas en test/HU08_julio/alertas.test.ts
+ *   sobre código real de src/modules/alerts/.
  */
 
 import { describe, test, expect, mock } from "bun:test";
@@ -95,7 +102,7 @@ const makeEvents = () => ({ emit: mock(() => undefined) });
 //   Path 4 – unlocked + "planned"                  → "simulated_completed"
 //   Path 5 – unlocked + "simulated_completed"      → "RESET"
 //   Path 6 – unlocked + "simulated_available"      → "planned"
-describe("[CAJA BLANCA] resolveNextStatus – todos los caminos del grafo de control", () => {
+describe("[APOYO · MODELO DE TRANSICIONES] resolveNextStatus (función local al test, no producción)", () => {
 
   test("Path 1 – curso bloqueado (!isUnlocked): retorna BLOCKED independiente del estado", () => {
     expect(resolveNextStatus({ currentStatus: null, isUnlocked: false, hasPrerequisitesPending: false }))
@@ -141,7 +148,7 @@ describe("[CAJA BLANCA] resolveNextStatus – todos los caminos del grafo de con
 //   6. currentSimStatus     – estado previo en BD (afecta idempotencia del upsert)
 //
 // Técnica: partición de equivalencia + valores límite
-describe("[CAJA NEGRA] updateSimulation y deleteSimulation – particiones de equivalencia", () => {
+describe("[APOYO · PARTICIONES] updateSimulation y deleteSimulation (payload de 3 campos)", () => {
 
   test("BN-1 – clase válida completa (todos los campos correctos, planned): actualiza en BD", async () => {
     const repo = makeRepo();
