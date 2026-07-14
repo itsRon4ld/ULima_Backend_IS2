@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { config } from "../../src/config/app-config.js";
@@ -123,14 +123,20 @@ const claimsFrom = (token: string): JwtPayload => {
   return claims;
 };
 
-const expectHttpError = async (action: Promise<unknown>, statusCode: number, code: string) => {
+const expectHttpError = async (
+  action: Promise<unknown>,
+  statusCode: number,
+  code: string,
+  message: string,
+) => {
   try {
     await action;
     throw new Error(`Se esperaba ${statusCode} ${code}`);
   } catch (error) {
-    const httpError = error as { statusCode?: number; code?: string };
+    const httpError = error as { statusCode?: number; code?: string; message?: string };
     expect(httpError.statusCode).toBe(statusCode);
     expect(httpError.code).toBe(code);
+    expect(httpError.message).toBe(message);
   }
 };
 
@@ -143,28 +149,49 @@ describe("CAJA BLANCA · AuthService.login()", () => {
     expect(claims.teacherId).toBe(7);
     expect(claims.studentId).toBeUndefined(); // token docente NO lleva studentId
     expect(claims.tokenVersion).toBe(4); // versión nueva (recién incrementada)
+    expect(result.tokenType).toBe("Bearer");
     expect(calls.incrementedUserIds).toEqual([42]);
     expect("passwordHash" in result.user).toBe(false); // no se filtra el hash
   });
 
   test("C2: código inexistente (ni alumno ni docente) → 401 USER_NOT_FOUND", async () => {
     const { service } = makeService({ student: null, teacher: null });
-    await expectHttpError(service.login({ code: "zzz", password: PASSWORD }), 401, "USER_NOT_FOUND");
+    await expectHttpError(
+      service.login({ code: "zzz", password: PASSWORD }),
+      401,
+      "USER_NOT_FOUND",
+      "Código no encontrado en la base de datos.",
+    );
   });
 
   test("C3: docente con contraseña incorrecta → 401 INVALID_PASSWORD", async () => {
     const { service } = makeService({ student: null, teacher: teacher() });
-    await expectHttpError(service.login({ code: "hquintan", password: "mala" }), 401, "INVALID_PASSWORD");
+    await expectHttpError(
+      service.login({ code: "hquintan", password: "mala" }),
+      401,
+      "INVALID_PASSWORD",
+      "Contraseña incorrecta.",
+    );
   });
 
   test("C4: alumno con contraseña incorrecta → 401 INVALID_PASSWORD", async () => {
     const { service } = makeService({ student: student() });
-    await expectHttpError(service.login({ code: "20235218", password: "mala" }), 401, "INVALID_PASSWORD");
+    await expectHttpError(
+      service.login({ code: "20235218", password: "mala" }),
+      401,
+      "INVALID_PASSWORD",
+      "Contraseña incorrecta.",
+    );
   });
 
   test("C5: alumno correcto pero sin matrícula activa → 403 NOT_ENROLLED", async () => {
     const { service, calls } = makeService({ student: student(), hasEnrollment: false });
-    await expectHttpError(service.login({ code: "20235218", password: PASSWORD }), 403, "NOT_ENROLLED");
+    await expectHttpError(
+      service.login({ code: "20235218", password: PASSWORD }),
+      403,
+      "NOT_ENROLLED",
+      "El estudiante no tiene una matrícula activa.",
+    );
     expect(calls.enrollmentStudentIds).toEqual([101]);
   });
 
@@ -180,6 +207,7 @@ describe("CAJA BLANCA · AuthService.login()", () => {
     expect(claims.studentId).toBe(101);
     expect(claims.teacherId).toBeUndefined();
     expect(claims.tokenVersion).toBe(5);
+    expect(result.tokenType).toBe("Bearer");
     expect(result.user.role).toBe("delegate");
     expect("passwordHash" in result.user).toBe(false);
     expect(calls.incrementedUserIds).toEqual([11]);
@@ -194,6 +222,20 @@ describe("CAJA BLANCA · AuthService.login()", () => {
 
   test("C8: error no-HttpError del repositorio (fallo de BD) → 500 INTERNAL_ERROR", async () => {
     const { service } = makeService({ throwOnFind: true });
-    await expectHttpError(service.login({ code: "20235218", password: PASSWORD }), 500, "INTERNAL_ERROR");
+    const consoleError = spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      await expectHttpError(
+        service.login({ code: "20235218", password: PASSWORD }),
+        500,
+        "INTERNAL_ERROR",
+        "Error interno del servidor.",
+      );
+      expect(consoleError).toHaveBeenCalledTimes(1);
+      expect(consoleError.mock.calls[0]?.[0]).toBe("DB Error in auth.service login");
+      expect(consoleError.mock.calls[0]?.[1]).toBeInstanceOf(Error);
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

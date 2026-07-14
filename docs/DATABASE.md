@@ -44,7 +44,7 @@ student_curriculum_simulation  schedule_session     alert (por alumno)
   - `chk_section_jp_not_teacher`: el JP no puede ser el titular de su propia sección (`jp_id <> teacher_id`).
   - `uq_section_jp` (índice único parcial): **un JP pertenece a UNA sola sección** (ignora NULLs).
   - `jp_id` es **nullable**: la mayoría de secciones no tienen JP.
-- Estado real hoy: **una sola sección con JP** — sección `id=1`, código **856** (INGENIERÍA DE SOFTWARE II): titular QUINTANA CRUZ (teacher 129, login `hquintan`), **JP = Lo Li, Aaron (teacher 176, login `alo`)**.
+- Estado real hoy: **una sola sección con JP** — sección `id=1`, código **856** (INGENIERÍA DE SOFTWARE II): titular QUINTANA CRUZ (teacher 129, login `hquintan`), **JP = Lo Li, Aron (teacher 176, login `alo`)**.
 - El **login** del JP no vive en `teacher` sino en `app_user`, enlazado por `teacher.user_id` (nullable: solo 2 de 175 teachers tienen cuenta). El JWT docente lleva `teacherId`, y `requireRole("teacher")` cubre a profesor y JP por igual; los permisos finos se comprueban contra `teacher_id`/`jp_id` de la sección.
 
 ### 📝 ¿Dónde se guardan las notas?
