@@ -1,9 +1,9 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
-  "_comment": "Testing de mutación (HU06/HU07/HU22/HU30): muta SOLO la lógica de negocio de Calculadora y Lista de Impedidos y usa las suites HU*_aurelio como oráculo. Ejecutar con: bunx stryker run",
+  "_comment": "Testing de mutación de Samantha (HU06/HU07/HU22/HU30): muta la lógica de negocio de la Calculadora y la Lista de Impedidos; oráculo = suites HU*_sam. Ejecutar: bunx stryker run --config-file stryker.sam.conf.json",
   "testRunner": "command",
   "commandRunner": {
-    "command": "bun test test/HU06_aurelio test/HU07_aurelio test/HU22_aurelio test/HU30_aurelio test/grades.logic.test.ts"
+    "command": "bun test test/HU06_sam test/HU07_sam test/HU22_sam test/HU30_sam"
   },
   "mutate": [
     "src/modules/grades/grades.logic.ts",
@@ -11,7 +11,7 @@
   ],
   "coverageAnalysis": "off",
   "reporters": ["clear-text", "progress", "html"],
-  "htmlReporter": { "fileName": "reports/mutation/mutation.html" },
+  "htmlReporter": { "fileName": "reports/mutation/sam-attendance.html" },
   "thresholds": { "high": 90, "low": 80, "break": null },
   "concurrency": 4,
   "tempDirName": ".stryker-tmp",

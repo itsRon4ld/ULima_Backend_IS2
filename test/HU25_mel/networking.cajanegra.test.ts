@@ -41,17 +41,18 @@ import {
 
 describe("CAJA NEGRA · HU25 updateNetworkingSchema", () => {
   test("CV1: carnet visible sin enlace es valido", () => {
+    // Se puede compartir el carnet SIN red registrada.
     expect(updateNetworkingSchema.safeParse({ optIn: true, links: [] }).success).toBe(true);
   });
 
   test("CV2: carnet visible con una red valida normaliza espacios", () => {
     const parsed = updateNetworkingSchema.safeParse({
       optIn: true,
-      links: [{ platform: "github", url: "  https://github.com/mel  " }],
+      links: [{ platform: "github", url: "  https://github.com/mel  " }], // url con espacios alrededor
     });
 
-    expect(parsed.success).toBe(true);
-    if (parsed.success) expect(parsed.data.links[0].url).toBe("https://github.com/mel");
+    expect(parsed.success).toBe(true);                                    // válido
+    if (parsed.success) expect(parsed.data.links[0].url).toBe("https://github.com/mel"); // se recorta al parsear
   });
 
   test("CNV1: no acepta mas de una red", () => {
@@ -59,21 +60,23 @@ describe("CAJA NEGRA · HU25 updateNetworkingSchema", () => {
       optIn: true,
       links: [
         { platform: "github", url: "https://github.com/a" },
-        { platform: "instagram", url: "https://instagram.com/a" },
+        { platform: "instagram", url: "https://instagram.com/a" }, // 2 redes -> supera el máximo (1)
       ],
     }).success).toBe(false);
   });
 
   test("CNV2: rechaza protocolo distinto de HTTP(S)", () => {
+    // ftp no es http(s) -> el enlace no es válido.
     expect(socialLinkSchema.safeParse({ platform: "github", url: "ftp://github.com/a" }).success).toBe(false);
   });
 
   test("CNV3: rechaza dominio que no corresponde a la plataforma", () => {
+    // example.com no es linkedin -> dominio incoherente con la plataforma.
     expect(socialLinkSchema.safeParse({ platform: "linkedin", url: "https://example.com/in/a" }).success).toBe(false);
   });
 
   test("CNV4: website y other requieren label", () => {
-    expect(socialLinkSchema.safeParse({ platform: "website", url: "https://mel.dev" }).success).toBe(false);
-    expect(socialLinkSchema.safeParse({ platform: "other", url: "https://mel.dev", label: "Portfolio" }).success).toBe(true);
+    expect(socialLinkSchema.safeParse({ platform: "website", url: "https://mel.dev" }).success).toBe(false); // sin label -> no
+    expect(socialLinkSchema.safeParse({ platform: "other", url: "https://mel.dev", label: "Portfolio" }).success).toBe(true); // con label -> ok
   });
 });

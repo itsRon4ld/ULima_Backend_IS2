@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Testing de mutación de Ronald (HU13 - Asesorías/RSVP): muta la lógica pura de asesorías del alumno (¿sesión pasada?) que ejercita la caja blanca getAdvising/confirmRsvp y las unitarias isSessionPast. Ejecutar: bunx stryker run --config-file stryker.ronald.conf.json",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "bun test test/HU13_ronald"
+  },
+  "mutate": [
+    "src/modules/advising/student/student.logic.ts"
+  ],
+  "coverageAnalysis": "off",
+  "reporters": ["clear-text", "progress", "html"],
+  "htmlReporter": { "fileName": "reports/mutation/ronald-advising.html" },
+  "thresholds": { "high": 90, "low": 80, "break": null },
+  "concurrency": 4,
+  "tempDirName": ".stryker-tmp",
+  "ignorePatterns": ["node_modules", ".stryker-tmp", "reports", "drizzle", "docs", "specs", ".tessl"]
+}

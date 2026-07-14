@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Mutacion exclusiva de la caja blanca HU25 de Melissa sobre updateMine con V(G)=5.",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "bun test test/HU25_mel/networking.cajablanca.test.ts"
+  },
+  "mutate": [
+    "src/modules/networking/networking.service.ts:31-56"
+  ],
+  "coverageAnalysis": "off",
+  "reporters": ["clear-text", "progress", "html"],
+  "htmlReporter": {
+    "fileName": "reports/mutation/mel-networking.html"
+  },
+  "thresholds": {
+    "high": 90,
+    "low": 80,
+    "break": null
+  },
+  "concurrency": 4,
+  "tempDirName": ".stryker-tmp",
+  "ignorePatterns": [
+    "node_modules",
+    ".stryker-tmp",
+    "reports",
+    "drizzle",
+    "docs",
+    "specs",
+    ".tessl"
+  ]
+}
