@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import type { EventBus } from "../src/events/index.js";
-import type { NetworkingRepository } from "../src/modules/networking/networking.repository.js";
-import { NetworkingService } from "../src/modules/networking/networking.service.js";
-import type { NetworkingCard, PublicNetworkingCard } from "../src/modules/networking/networking.types.js";
+import type { EventBus } from "../../src/events/index.js";
+import type { NetworkingRepository } from "../../src/modules/networking/networking.repository.js";
+import { NetworkingService } from "../../src/modules/networking/networking.service.js";
+import type { NetworkingCard, PublicNetworkingCard } from "../../src/modules/networking/networking.types.js";
 
 const noopEvents = {} as unknown as EventBus;
 

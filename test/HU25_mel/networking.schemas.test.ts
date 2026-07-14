@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { updateNetworkingSchema } from "../src/modules/networking/networking.schemas.js";
+import { updateNetworkingSchema } from "../../src/modules/networking/networking.schemas.js";
 
 describe("updateNetworkingSchema - caja negra", () => {
   test("acepta carnet visible con una plataforma conocida", () => {

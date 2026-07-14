@@ -6,7 +6,7 @@ import {
   PASSING_GRADE,
   computeSectionStatistics,
   type StatScoreRow,
-} from "../src/modules/section-management/section-statistics.logic.js";
+} from "../../src/modules/section-management/section-statistics.logic.js";
 
 // Helper: filas (enrollment, EV01 peso 20, EV02 peso 30) para un alumno.
 const alumno = (enr: number, ev01: number | null, ev02: number | null): StatScoreRow[] => [

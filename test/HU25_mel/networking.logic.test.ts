@@ -5,7 +5,7 @@ import {
   urlBelongsToPlatform,
   validateNetworkingSelection,
   validateSocialLink,
-} from "../src/modules/networking/networking.logic.js";
+} from "../../src/modules/networking/networking.logic.js";
 
 describe("networking.logic - URLs y dominios", () => {
   test("solo acepta URLs HTTP(S) absolutas", () => {

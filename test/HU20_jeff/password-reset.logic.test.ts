@@ -9,7 +9,7 @@ import {
   OTP_LENGTH,
   validateNewPassword,
   validateResetToken,
-} from "../src/modules/auth/password-reset.logic.js";
+} from "../../src/modules/auth/password-reset.logic.js";
 
 const NOW = new Date("2026-07-04T12:00:00.000Z");
 

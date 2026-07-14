@@ -13,7 +13,7 @@ import {
   personalAverage,
   requiredOnRemaining,
   type ScoreRow,
-} from "../src/modules/alerts/alerts.logic.js";
+} from "../../src/modules/alerts/alerts.logic.js";
 
 const row = (over: Partial<ScoreRow>): ScoreRow => ({
   course_id: 1,

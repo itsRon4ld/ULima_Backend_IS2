@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { calcularPromedioPonderado, sumaDePesos } from "../src/modules/grades/grades.logic.js";
-import type { NotaInput } from "../src/modules/grades/grades.types.js";
+import { calcularPromedioPonderado, sumaDePesos } from "../../src/modules/grades/grades.logic.js";
+import type { NotaInput } from "../../src/modules/grades/grades.types.js";
 
 const n = (over: Partial<NotaInput>): NotaInput => ({ valor: 15, peso: 30, ...over });
 

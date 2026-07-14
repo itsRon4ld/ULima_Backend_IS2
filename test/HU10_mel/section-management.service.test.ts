@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import type { EventBus } from "../src/events/index.js";
-import type { SectionManagementRepository } from "../src/modules/section-management/section-management.repository.js";
-import { SectionManagementService } from "../src/modules/section-management/section-management.service.js";
+import type { EventBus } from "../../src/events/index.js";
+import type { SectionManagementRepository } from "../../src/modules/section-management/section-management.repository.js";
+import { SectionManagementService } from "../../src/modules/section-management/section-management.service.js";
 import type {
   AnnouncementRow,
   RepresentativeAccess,
-} from "../src/modules/section-management/section-management.types.js";
+} from "../../src/modules/section-management/section-management.types.js";
 
 const noopEvents = {} as unknown as EventBus;
 

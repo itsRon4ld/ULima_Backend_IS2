@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { OfficialGradesService } from "../src/modules/official-grades/official-grades.service.js";
-import type { OfficialGradesRepository } from "../src/modules/official-grades/official-grades.repository.js";
-import type { EventBus } from "../src/events/index.js";
+import { OfficialGradesService } from "../../src/modules/official-grades/official-grades.service.js";
+import type { OfficialGradesRepository } from "../../src/modules/official-grades/official-grades.repository.js";
+import type { EventBus } from "../../src/events/index.js";
 
 const noopEvents = {} as unknown as EventBus;
 

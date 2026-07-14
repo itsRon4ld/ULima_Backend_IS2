@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import jwt from "jsonwebtoken";
-import { config } from "../src/config/app-config.js";
-import { EventBus } from "../src/events/index.js";
-import type { AuthRepository } from "../src/modules/auth/auth.repository.js";
-import { AuthService, type GoogleTokenVerifier } from "../src/modules/auth/auth.service.js";
-import type { AuthUser, TeacherAuthUser } from "../src/modules/auth/auth.types.js";
+import { config } from "../../src/config/app-config.js";
+import { EventBus } from "../../src/events/index.js";
+import type { AuthRepository } from "../../src/modules/auth/auth.repository.js";
+import { AuthService, type GoogleTokenVerifier } from "../../src/modules/auth/auth.service.js";
+import type { AuthUser, TeacherAuthUser } from "../../src/modules/auth/auth.types.js";
 
 type GooglePayload = {
   email?: string;
