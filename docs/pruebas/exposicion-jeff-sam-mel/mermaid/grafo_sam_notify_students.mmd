@@ -1,0 +1,35 @@
+flowchart TD
+  I((Inicio)) --> N1[Leer filas y preparar lista de alertas]
+  N1 --> D1{Queda otra fila}
+  D1 -->|No| N9[Guardar alertas y contar notificados]
+  D1 -->|Si| N2[Leer horas ausentes y horas totales]
+  N2 --> D2{Total de horas menor o igual a cero}
+  D2 -->|Si| D1
+  D2 -->|No| N3[Calcular porcentaje de ausencia]
+  N3 --> D3{Ciclo mayor o igual a seis}
+  D3 -->|Si| N4a[Fijar limite en 35]
+  D3 -->|No| N4b[Fijar limite en 25]
+  N4a --> D4{Porcentaje mayor que limite}
+  N4b --> D4
+  D4 -->|Si| N5[Redactar alerta de limite superado]
+  D4 -->|No| N6[Calcular faltas restantes]
+  N6 --> D5a{Faltas distinto de dos}
+  D5a -->|No| N7[Redactar alerta preventiva]
+  D5a -->|Si| D5b{Faltas distinto de tres}
+  D5b -->|No| N7
+  D5b -->|Si| D1
+  N5 --> N8[Agregar alerta a la lista]
+  N7 --> N8
+  N8 --> D1
+  N9 --> D6{Notificados mayor que cero}
+  D6 -->|No| N12[Mensaje: no hay alumnos que notificar]
+  D6 -->|Si| D7{Notificados igual a uno}
+  D7 -->|Si| N10[Usar verbo ha]
+  D7 -->|No| N11[Usar verbo han]
+  N10 --> D8{Notificados igual a uno}
+  N11 --> D8
+  D8 -->|Si| N13[Usar alumno en singular]
+  D8 -->|No| N14[Usar alumnos en plural]
+  N13 --> F((Fin))
+  N14 --> F
+  N12 --> F

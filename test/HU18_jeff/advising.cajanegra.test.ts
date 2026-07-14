@@ -10,11 +10,19 @@ import {
  * CAJA NEGRA — Publicar asesoría extra como docente (HU18)
  * Fuente: validateCreateAdvising() — src/modules/advising/teacher/teacher.logic.ts:77
  * ============================================================================
+ * ⭐ IDEA CENTRAL PARA EXPONER:
+ * Los 15 casos se eligieron desde clases válidas, inválidas y fronteras. El
+ * oráculo observa únicamente el `status` público de la función; no depende de
+ * su algoritmo interno. Esta es caja negra de la unidad de validación, no una
+ * prueba end-to-end del endpoint, la autenticación o la base de datos.
+ *
  * Se derivan los casos desde los REQUISITOS (no del código): el formulario del
  * docente tiene MÁS DE 4 CAMPOS DE ENTRADA y el validador aplica un ORDEN DE
  * PRECEDENCIA fijo.
  *
- * CAMPOS DE ENTRADA (6): sessionDate, startTime, endTime, modality, classroom, meetingUrl.
+ * CAMPOS DE ESTA UNIDAD (6): sessionDate, startTime, endTime, modality,
+ * classroom, meetingUrl. El payload HTTP completo tiene otros campos, pero no
+ * intervienen en la función seleccionada y por eso no forman parte de la tabla.
  * PRECEDENCIA: invalid_time > date_in_past > date_out_of_period > missing_location > overlap.
  *
  * TABLA DE PARTICIÓN DE EQUIVALENCIA + VALORES LÍMITE:
@@ -56,6 +64,8 @@ const extra = (startTime: string, endTime: string, sessionDate = "2026-06-10"): 
 });
 
 describe("CAJA NEGRA · validateCreateAdvising() (HU18)", () => {
+  // Caso base: mantiene válidos los seis campos y sirve de referencia para que
+  // cada caso posterior cambie una sola clase de equivalencia cuando sea posible.
   test("CV1: todos los campos válidos → ok + día derivado", () => {
     const r = validate();
     expect(r.status).toBe("ok");
@@ -66,6 +76,8 @@ describe("CAJA NEGRA · validateCreateAdvising() (HU18)", () => {
     expect(validate({ startTime: "12:00", endTime: "10:00" }).status).toBe("invalid_time");
   });
 
+  // ⭐ FRONTERA PRINCIPAL: la igualdad pertenece a la clase inválida porque el
+  // requisito exige una duración estrictamente positiva (inicio < fin).
   test("CNV2 (valor límite): hora inicio == hora fin → invalid_time", () => {
     expect(validate({ startTime: "10:00", endTime: "10:00" }).status).toBe("invalid_time");
   });
@@ -110,6 +122,8 @@ describe("CAJA NEGRA · validateCreateAdvising() (HU18)", () => {
     expect(validate({}, [extra("08:00", "10:00")]).status).toBe("ok");
   });
 
+  // ⭐ La precedencia evita respuestas ambiguas cuando una entrada viola dos
+  // reglas simultáneamente: debe aparecer siempre el primer error del contrato.
   test("Precedencia: rango inválido tiene prioridad sobre fecha pasada", () => {
     expect(validate({ startTime: "12:00", endTime: "10:00", sessionDate: "2026-05-01" }).status).toBe("invalid_time");
   });

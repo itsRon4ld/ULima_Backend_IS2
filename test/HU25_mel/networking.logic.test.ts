@@ -20,9 +20,18 @@ import {
  *   - validateSocialLink()        : website/other EXIGEN etiqueta; el resto no.
  *   - validateNetworkingSelection(): a lo sumo UNA red (visible u oculto).
  *   - normalizeSocialLink()       : recorta espacios de url/label; label vacío -> null.
+ *
+ * ⭐ CUATRO UNITARIAS OFICIALES PARA LA EXPOSICIÓN:
+ *   1. validateSocialLink: website/other necesitan etiqueta.
+ *   2. urlBelongsToPlatform: rechaza dominios de suplantación.
+ *   3. validateNetworkingSelection: máximo una red total.
+ *   4. normalizeSocialLink: trim y etiqueta vacía -> null.
+ * isHttpUrl() es una quinta función de apoyo; el archivo completo contiene 9
+ * bloques y 23 aserciones, aunque solo se presentan las cuatro anteriores.
  */
 
 describe("networking.logic - URLs y dominios", () => {
+  // Cobertura adicional del helper que usan las validaciones principales.
   test("solo acepta URLs HTTP(S) absolutas", () => {
     expect(isHttpUrl("https://example.com/profile")).toBe(true);  // https absoluta -> ok
     expect(isHttpUrl("http://example.com/profile")).toBe(true);   // http absoluta -> ok
@@ -36,6 +45,7 @@ describe("networking.logic - URLs y dominios", () => {
     expect(urlBelongsToPlatform("github", "https://github.com/alumna")).toBe(true);
   });
 
+  // ⭐ UNITARIA OFICIAL 2/4 — urlBelongsToPlatform(): anti-suplantación.
   test("rechaza hosts que solo contienen el nombre de la plataforma", () => {
     // "linkedin.com.evil.test" NO es linkedin.com: el dominio real es evil.test (anti-suplantación).
     expect(urlBelongsToPlatform("linkedin", "https://linkedin.com.evil.test/alumna")).toBe(false);
@@ -49,6 +59,7 @@ describe("networking.logic - URLs y dominios", () => {
     expect(urlBelongsToPlatform("x", "https://example.com/alumna")).toBe(false);          // dominio ajeno
   });
 
+  // ⭐ UNITARIA OFICIAL 1/4 — validateSocialLink(): etiqueta obligatoria.
   test("website y other exigen etiqueta", () => {
     expect(validateSocialLink({ platform: "website", url: "https://me.dev" }).status)
       .toBe("label_required");                                    // website sin label -> falta etiqueta
@@ -80,6 +91,7 @@ describe("networking.logic - selección única", () => {
     expect(validateNetworkingSelection({ optIn: false, links: [github] }).status).toBe("ok"); // oculto con una red -> ok
   });
 
+  // ⭐ UNITARIA OFICIAL 3/4 — validateNetworkingSelection(): cardinalidad.
   test("nunca acepta más de una red total", () => {
     expect(validateNetworkingSelection({
       optIn: false,
@@ -87,6 +99,7 @@ describe("networking.logic - selección única", () => {
     }).status).toBe("too_many_links");                            // límite: máximo 1 red
   });
 
+  // ⭐ UNITARIA OFICIAL 4/4 — normalizeSocialLink(): salida canónica.
   test("normaliza espacios y fija label null", () => {
     expect(normalizeSocialLink({
       platform: "linkedin",

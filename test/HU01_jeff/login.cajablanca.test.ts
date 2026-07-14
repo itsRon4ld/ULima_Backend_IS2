@@ -12,6 +12,12 @@ import type { AuthUserWithPassword, TeacherAuthUserWithPassword } from "../../sr
  * CAJA BLANCA — AuthService.login() (HU01: iniciar sesión por código+contraseña)
  * Fuente: src/modules/auth/auth.service.ts:56 (+ loginTeacher :107)
  * ============================================================================
+ * ⭐ IDEA CENTRAL PARA EXPONER:
+ * La suite conoce la estructura interna del método y fabrica el estado exacto
+ * del repositorio para obligar a que se ejecute cada recorrido independiente.
+ * Solo se reemplaza la persistencia; bcrypt, la firma y la lectura del JWT son
+ * reales. Por eso esto es caja blanca y no una simulación del método probado.
+ *
  * Método con complejidad ciclomática > 4: se prueba un test por CAMINO
  * independiente (McCabe). Las dependencias (repositorio, bcrypt) se aíslan con
  * un repositorio falso; NO se toca la BD.
@@ -27,8 +33,10 @@ import type { AuthUserWithPassword, TeacherAuthUserWithPassword } from "../../sr
  *   P6  representation?.position ?? "student"   (rol por representación)
  *   P7  catch: if (e instanceof HttpError) throw ; else ─▶ 500 INTERNAL_ERROR
  *
- * V(G) = P1..P7 (con el corto-circuito de loginTeacher) ≈ 8 puntos de decisión
- * ⇒ V(G) ≈ 8 (> 4). Batería de caminos independientes:
+ * Bajo la convención declarada: 7 decisiones + 1 región base ⇒ V(G) ≈ 8.
+ * El valor es aproximado porque el operador `??` puede contarse de forma
+ * distinta según la herramienta; la defensa importante son los 8 recorridos
+ * ejecutables y observables de la tabla siguiente.
  *
  * | # | Camino                                   | Entrada que lo fuerza             | Esperado             |
  * |---|------------------------------------------|-----------------------------------|----------------------|
@@ -155,6 +163,8 @@ const expectHttpError = async (
 };
 
 describe("CAJA BLANCA · AuthService.login()", () => {
+  // ⭐ C1 es el mejor caso feliz para mostrar: demuestra desvío a docente,
+  // tokenVersion nuevo, claims correctos y que passwordHash no sale de la capa.
   // C1 · Camino N1(null)->P1(V)->loginTeacher OK: sin alumno pero con docente y contraseña correcta => JWT docente.
   test("C1: código de docente (no alumno) con contraseña correcta → JWT docente", async () => {
     // student: null fuerza el desvío a loginTeacher; nextTokenVersion: 4 es la versión que se firmará.
@@ -242,6 +252,8 @@ describe("CAJA BLANCA · AuthService.login()", () => {
     expect(result.user.role).toBe("student"); // verifica que el user devuelto también tenga rol student
   });
 
+  // ⭐ C8 prueba una frontera de seguridad: un error interno no filtra detalles
+  // de la base de datos y se traduce a una respuesta pública genérica.
   // C8 · Camino P7 (error no-HttpError): el repo lanza un Error genérico => se traduce a 500 INTERNAL_ERROR y se loguea.
   test("C8: error no-HttpError del repositorio (fallo de BD) → 500 INTERNAL_ERROR", async () => {
     const { service } = makeService({ throwOnFind: true }); // throwOnFind hace que findByCodeWithPassword lance

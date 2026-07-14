@@ -20,6 +20,9 @@ import type { NotaInput } from "../../src/modules/grades/grades.types.js";
  *   - calcularPromedioPonderado: lista vacía, una nota al 100%, ponderado de
  *     varias evaluaciones, y avance parcial (pesos que no llegan a 100).
  *   - sumaDePesos: suma de pesos ingresados y lista vacía.
+ *
+ * ⭐ Para la exposición se selecciona "ponderado de varias evaluaciones" como
+ * UNITARIA OFICIAL 4/4 de Sam. Las demás quedan como cobertura complementaria.
  */
 
 // Helper (fixture): crea una NotaInput con valores por defecto (valor 15, peso 30%)
@@ -36,6 +39,7 @@ describe("calcularPromedioPonderado", () => {
     expect(calcularPromedioPonderado([n({ valor: 15, peso: 100 })])).toBeCloseTo(15.0, 9); // verifica que una nota al 100% se devuelva íntegra
   });
 
+  // ⭐ UNITARIA OFICIAL 4/4 — calcularPromedioPonderado(): fórmula completa.
   test("ponderado de varias evaluaciones", () => {
     // 12*0.3 + 16*0.5 + 8*0.2 = 3.6 + 8.0 + 1.6 = 13.2
     const promedio = calcularPromedioPonderado([

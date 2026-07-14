@@ -18,6 +18,9 @@ import type {
  *
  * CAMPOS DE ENTRADA de cada fila (más de 4): code, full_name, current_level,
  * absent_hours, total_section_hours, cycle.
+ * En la partición se mantienen válidos code/full_name/current_level y se varían
+ * absent_hours, total_section_hours y cycle, que son los campos que cambian la
+ * clase de salida. Esto sigue cumpliendo la entrada de seis campos de la rúbrica.
  * Regla: límite 25% (ciclos 1-5) / 35% (ciclo 6+); "impedido" si % > límite
  * (comparación ESTRICTA); "en_riesgo" si faltan 2 o 3 faltas; total 0 horas
  * -> "normal" con 0% (guarda contra división por cero).
@@ -71,7 +74,8 @@ describe("CAJA NEGRA · getAttendanceRisk (HU22)", () => {
     expect(resultado.missingFaltas).toBeNull();       // impedido no muestra "faltas restantes"
   });
 
-  test("CN2: 30% en ciclo 3 está en riesgo porque el límite es 35%", async () => {
+  // ⭐ Comparación pedagógica con CN1: mismo porcentaje, distinto ciclo y límite.
+  test("CN2: 30% en ciclo 6 está en riesgo porque el límite es 35%", async () => {
     // Mismo 30% que CN1 pero en ciclo 6: el límite sube a 35% -> ya NO es impedido.
     const resultado = await clasificar(30, 100, 6);
 
@@ -79,6 +83,7 @@ describe("CAJA NEGRA · getAttendanceRisk (HU22)", () => {
     expect(resultado.missingFaltas).toBe(3);
   });
 
+  // ⭐ VALOR LÍMITE: este caso distingue `>` de `>=`.
   test("CN3: 25% exacto en ciclo 3 todavía es normal", async () => {
     // VALOR LÍMITE: justo en el 25%. La comparación es '>' (estricta), no '>='.
     const resultado = await clasificar(25, 100, 3);

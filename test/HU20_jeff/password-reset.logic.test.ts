@@ -13,7 +13,7 @@ import {
 
 /**
  * ============================================================================
- * PRUEBA UNITARIA + CAJA NEGRA — Lógica de restablecimiento de contraseña (HU20)
+ * PRUEBAS UNITARIAS — Lógica de restablecimiento de contraseña (HU20)
  * Fuente: src/modules/auth/password-reset.logic.ts
  * ============================================================================
  * Se prueban de forma AISLADA las funciones puras del flujo de "olvidé mi
@@ -31,6 +31,15 @@ import {
  *   - maskEmail()        : enmascara la parte local dejando 4 (o >= 1) visibles.
  *
  * Casos: generateOtp 2 · hashOtp 1 · validateResetToken 7 · validateNewPassword 2 · maskEmail 2.
+ *
+ * ⭐ CUATRO UNIDADES OFICIALES PARA LA EXPOSICIÓN:
+ *   1. validateResetToken()   — 7 casos de estado, frontera y precedencia.
+ *   2. validateNewPassword()  — partición de longitud 7/8 caracteres.
+ *   3. maskEmail()            — protección de datos mostrados al usuario.
+ *   4. hashOtp()              — SHA-256 determinístico de 64 caracteres hex.
+ * generateOtp() queda como cobertura adicional. Por tanto, "4 unitarias" se
+ * refiere a cuatro funciones seleccionadas, no a que el archivo tenga solo
+ * cuatro bloques `test`: el archivo completo conserva 14 casos.
  */
 
 // Instante "ahora" FIJO para todos los tests: así las comparaciones de expiración
@@ -51,6 +60,8 @@ const baseToken = (otp: string) => ({
   now: NOW,                                         // referencia de tiempo fija (para comparar contra expiresAt)
 });
 
+// Cobertura adicional: útil como respaldo, pero no forma parte de las cuatro
+// unidades oficiales porque su prueba de variedad tiene naturaleza probabilística.
 describe("generateOtp", () => {
   test("siempre genera 6 dígitos (incluye ceros a la izquierda)", () => {
     for (let i = 0; i < 1000; i++) {              // se repite 1000 veces para pillar OTPs con ceros a la izquierda
@@ -66,6 +77,7 @@ describe("generateOtp", () => {
   });
 });
 
+// ⭐ UNITARIA OFICIAL 4/4 — hashOtp(): protege el OTP en persistencia.
 describe("hashOtp", () => {
   test("retorna SHA-256 hex de 64 caracteres y es determinístico", () => {
     const hash = hashOtp("123456");               // hashea un OTP conocido
@@ -77,6 +89,7 @@ describe("hashOtp", () => {
   });
 });
 
+// ⭐ UNITARIA OFICIAL 1/4 — validateResetToken(): la de mayor riqueza lógica.
 describe("validateResetToken", () => {
   test("caso feliz: OTP correcto, vigente, sin uso previo ni intentos agotados", () => {
     const result = validateResetToken({ ...baseToken("123456"), candidateOtp: "123456" }); // token sano + OTP correcto
@@ -134,6 +147,7 @@ describe("validateResetToken", () => {
   });
 });
 
+// ⭐ UNITARIA OFICIAL 2/4 — validateNewPassword(): frontera mínima 7/8.
 describe("validateNewPassword", () => {
   test("rechaza contraseñas de menos de 8 caracteres", () => {
     expect(validateNewPassword("")).toBe(false);        // vacía: inválida
@@ -147,6 +161,7 @@ describe("validateNewPassword", () => {
   });
 });
 
+// ⭐ UNITARIA OFICIAL 3/4 — maskEmail(): minimiza la exposición del correo.
 describe("maskEmail", () => {
   test("enmascara la parte local dejando los primeros 4 caracteres", () => {
     // "20235218@..." -> deja "2023", oculta el resto de la parte local, conserva el dominio.

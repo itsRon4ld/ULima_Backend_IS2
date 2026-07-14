@@ -9,6 +9,10 @@ import type { NetworkingCard, SocialLink } from "../../src/modules/networking/ne
  * CAJA BLANCA - HU25 NetworkingService.updateMine()
  * Fuente: src/modules/networking/networking.service.ts:31-56
  * ============================================================================
+ * ⭐ IDEA CENTRAL PARA EXPONER:
+ * Se ejecuta updateMine() REAL y solo se sustituye el repositorio. Cada caso
+ * obliga una salida del switch, del ternario enlace/null o del chequeo final;
+ * además se verifica que una entrada inválida se rechace ANTES de persistir.
  *
  * Decisiones del metodo:
  *   D1  validation.status === "too_many_links"
@@ -25,21 +29,19 @@ import type { NetworkingCard, SocialLink } from "../../src/modules/networking/ne
  *   C3  D1/D2 falsos, D3 verdadero, D4 falso -> normaliza y retorna carnet
  *   C4  D1/D2 falsos, D3 falso, D4 falso -> persiste enlace null
  *   C5  D1/D2 falsos, D4 verdadero -> 404 USER_NOT_FOUND
+ *
+ * Evidencia actual: 5/5 casos y Stryker 15/15 mutantes eliminados. Ese 100%
+ * pertenece únicamente al rango de updateMine(), no a todo el módulo HU25.
  */
 
-// EventBus dummy: el test solo evalúa la lógica de updateMine.
 const noopEvents = {} as unknown as EventBus;
 
-// Fabrica un carnet de ejemplo (por defecto visible y sin redes).
 const card = (over: Partial<NetworkingCard> = {}): NetworkingCard => ({
   optIn: true,
   links: [],
   ...over,
 });
 
-// Arma el servicio con un repositorio falso; por defecto replaceByUserId
-// "guarda" devolviendo el carnet resultante. Cada test lo sobrescribe para
-// espiar lo que se persiste o forzar el camino de "usuario no encontrado".
 const makeService = (overrides: Partial<NetworkingRepository> = {}) => {
   const repository = {
     replaceByUserId: async (_userId: number, optIn: boolean, link: SocialLink | null) =>
@@ -75,6 +77,8 @@ const expectHttpError = async (
 };
 
 describe("CAJA BLANCA · HU25 NetworkingService.updateMine() · V(G)=5", () => {
+  // ⭐ C1 demuestra una propiedad de seguridad del flujo: al fallar la regla de
+  // cantidad, replaceByUserId no debe ejecutarse ni una sola vez.
   test("C1: mas de una red -> 400 y no persiste", async () => {
     let writes = 0;
     const service = makeService({
@@ -121,6 +125,8 @@ describe("CAJA BLANCA · HU25 NetworkingService.updateMine() · V(G)=5", () => {
     expect(writes).toBe(0);
   });
 
+  // ⭐ C3 es el camino feliz completo: entrada -> normalización -> repositorio
+  // -> respuesta. Conviene usarlo para explicar Arrange, Act y Assert.
   test("C3: enlace valido -> normaliza, persiste y retorna el carnet", async () => {
     let received:
       | { userId: number; optIn: boolean; link: SocialLink | null }

@@ -1,0 +1,29 @@
+flowchart TD
+  I((Inicio))
+  I --> N1[Buscar alumno por codigo]
+  N1 -->|Falla BD| D6{Error es HttpError}
+  N1 --> D1{Existe alumno}
+  D1 -->|No| N2[Buscar docente por codigo]
+  D1 -->|Si| N5[Comparar contrasena alumno]
+  N2 --> D2{Existe docente}
+  D2 -->|No| E1[Lanzar 401 USER_NOT_FOUND]
+  D2 -->|Si| N3[Comparar contrasena docente]
+  N3 --> D3{Contrasena docente correcta}
+  D3 -->|No| E2[Lanzar 401 INVALID_PASSWORD]
+  D3 -->|Si| N4[Firmar JWT docente]
+  N5 --> D4{Contrasena alumno correcta}
+  D4 -->|No| E3[Lanzar 401 INVALID_PASSWORD]
+  D4 -->|Si| N6[Verificar matricula activa]
+  N6 --> D5{Tiene matricula activa}
+  D5 -->|No| E4[Lanzar 403 NOT_ENROLLED]
+  D5 -->|Si| N7[Asignar rol y firmar JWT alumno]
+  D6 -->|Si| E5[Repropagar HttpError]
+  D6 -->|No| E6[Responder 500 INTERNAL_ERROR]
+  N4 --> Fin((Fin))
+  N7 --> Fin
+  E1 --> Fin
+  E2 --> Fin
+  E3 --> Fin
+  E4 --> Fin
+  E5 --> Fin
+  E6 --> Fin

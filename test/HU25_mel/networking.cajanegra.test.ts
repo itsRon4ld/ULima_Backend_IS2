@@ -1,5 +1,5 @@
-/*
-  bun test/HU25_mel/networking.cajanegra.test.ts
+/* Ejecutar de forma independiente:
+   bun test test/HU25_mel/networking.cajanegra.test.ts
 */
 import { describe, expect, test } from "bun:test";
 import {
@@ -12,6 +12,11 @@ import {
  * CAJA NEGRA - Carnet de networking opt-in (HU25)
  * Fuente: src/modules/networking/networking.schemas.ts
  * ============================================================================
+ * ⭐ IDEA CENTRAL PARA EXPONER:
+ * Se trata al esquema Zod como una caja: se entrega un payload y solo se
+ * observa `success` o el dato normalizado. No se ejecutan autenticación, HTTP,
+ * transacción ni base de datos.
+ *
  * Objetivo:
  *   Validar el contrato de entrada que recibe la API para guardar el carnet de
  *   networking, sin depender de la implementacion interna del servicio ni de la
@@ -23,6 +28,8 @@ import {
  *
  * Campos de entrada observados desde API:
  *   optIn, links[], platform, url, label.
+ * Conteo real: 8 bloques `test`, 12 payloads concretos y 13 aserciones. Algunos
+ * bloques agrupan entradas de la misma clase para mantener legible la suite.
  *
  * TABLA DE PARTICION DE EQUIVALENCIA + VALORES LIMITE:
  * | Caso | Clase evaluada                         | Entrada representativa                         | Esperado |
@@ -78,5 +85,41 @@ describe("CAJA NEGRA · HU25 updateNetworkingSchema", () => {
   test("CNV4: website y other requieren label", () => {
     expect(socialLinkSchema.safeParse({ platform: "website", url: "https://mel.dev" }).success).toBe(false); // sin label -> no
     expect(socialLinkSchema.safeParse({ platform: "other", url: "https://mel.dev", label: "Portfolio" }).success).toBe(true); // con label -> ok
+  });
+
+  // ── Consolidado desde networking.schemas: bordes de contrato y modo estricto ──
+  test("CNV5: rechaza plataforma fuera del enum, url > 255 y label > 80 (bordes de contrato)", () => {
+    // plataforma "facebook" no está en el enum de redes soportadas -> inválida
+    expect(updateNetworkingSchema.safeParse({
+      optIn: true,
+      links: [{ platform: "facebook", url: "https://facebook.com/a" }],
+    }).success).toBe(false);
+    // url de 260 caracteres: representante inválido por exceder el máximo 255.
+    // No se afirma aquí cobertura bilateral 255/256 porque este bloque no la ejecuta.
+    expect(updateNetworkingSchema.safeParse({
+      optIn: true,
+      links: [{ platform: "website", url: `https://example.com/${"x".repeat(240)}`, label: "Web" }],
+    }).success).toBe(false);
+    // label de 81 caracteres: valor inmediatamente posterior al máximo 80.
+    expect(updateNetworkingSchema.safeParse({
+      optIn: true,
+      links: [{ platform: "website", url: "https://example.com", label: "x".repeat(81) }],
+    }).success).toBe(false);
+  });
+
+  // ⭐ SEGURIDAD DEL CONTRATO: el propietario se obtiene del JWT; el cliente no
+  // puede inyectar userId ni campos desconocidos en ningún nivel del payload.
+  test("CNV6: rechaza userId y campos extra en cualquier nivel (schema estricto)", () => {
+    // no debe aceptarse un userId enviado por el cliente (lo pone el servidor desde el JWT)
+    expect(updateNetworkingSchema.safeParse({
+      userId: 999,
+      optIn: true,
+      links: [{ platform: "github", url: "https://github.com/a" }],
+    }).success).toBe(false);
+    // ni un campo extra dentro del link
+    expect(updateNetworkingSchema.safeParse({
+      optIn: true,
+      links: [{ platform: "github", url: "https://github.com/a", userId: 999 }],
+    }).success).toBe(false);
   });
 });

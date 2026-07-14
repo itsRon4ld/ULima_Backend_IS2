@@ -1,0 +1,18 @@
+flowchart TD
+  I((Inicio)) --> N1[Validar seleccion con validateNetworkingSelection]
+  N1 --> D1{status es too_many_links}
+  D1 -->|Si| E1[Lanzar 400 INVALID_NETWORKING_LINK_COUNT]
+  D1 -->|No| D2{status es invalid_link}
+  D2 -->|Si| E2[Lanzar 400 INVALID_NETWORKING_LINK]
+  D2 -->|No| D3{Existe input.links[0]}
+  D3 -->|Si| N2[Normalizar con normalizeSocialLink]
+  D3 -->|No| N3[Asignar enlace null]
+  N2 --> N4[Guardar con replaceByUserId]
+  N3 --> N4
+  N4 --> D4{El repositorio devolvio null}
+  D4 -->|Si| E3[Lanzar 404 USER_NOT_FOUND]
+  D4 -->|No| N5[Retornar carnet actualizado]
+  E1 --> F((Fin))
+  E2 --> F
+  E3 --> F
+  N5 --> F
