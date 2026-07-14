@@ -1,7 +1,5 @@
 /**
- * =============================================================================
  * HU3 – Alertas de Riesgo Académico y Carga de Evaluaciones
- * =============================================================================
  * Archivo : test/alertas-academicas/alertas.test.ts
  * Runner  : bun test (compatible con Jest API)
  *
@@ -14,7 +12,6 @@
  *   ACADEMIC_RISK_MIN_PROGRESS = 55  (avance evaluado en %)
  *   ACADEMIC_RISK_MAX_AVERAGE  = 10.5 (promedio personal /20)
  *   HIGH_LOAD_THRESHOLD        = 3   (evaluaciones por semana)
- * =============================================================================
  */
 
 import { describe, test, expect, mock } from "bun:test";
@@ -66,20 +63,17 @@ const makeScoreRow = (over: Partial<ScoreRow> = {}): ScoreRow => ({
 // Mock base del repositorio de alertas
 const makeRepo = () => ({
   getActiveEnrollmentsWithScores: mock(async () => [] as EnrollmentWithScore[]),
-  getHighLoadWeeks:               mock(async () => [] as Array<{ week_number: number; assessment_count: number }>),
-  getAlerts:                      mock(async () => [] as StoredAlert[]),
-  getActivePeriodStart:           mock(async () => null as Date | null),
-  findAlertByTitle:               mock(async () => false),
-  createAlert:                    mock(async () => undefined),
-  markAlertAsRead:                mock(async () => true),
+  getHighLoadWeeks: mock(async () => [] as Array<{ week_number: number; assessment_count: number }>),
+  getAlerts: mock(async () => [] as StoredAlert[]),
+  getActivePeriodStart: mock(async () => null as Date | null),
+  findAlertByTitle: mock(async () => false),
+  createAlert: mock(async () => undefined),
+  markAlertAsRead: mock(async () => true),
 });
 
 const makeEvents = () => ({ emit: mock(() => undefined) });
 
-// ---------------------------------------------------------------------------
-// ============================================================================
 // [A] PRUEBA DE CAJA BLANCA – AlertsService.getAlertsForStudent()
-// ============================================================================
 // Complejidad Ciclomática del método:
 //   Nodo 1: entrada
 //   Nodo 2: for (group of courseGroups)                      → +1
@@ -96,12 +90,11 @@ const makeEvents = () => ({ emit: mock(() => undefined) });
 //   Path 4 – alta carga detectada, alerta NO existe           (crea alerta)
 //   Path 5 – alta carga detectada, alerta YA existe           (no duplica)
 //   Path 6 – múltiples cursos: algunos en riesgo, otros no
-// ---------------------------------------------------------------------------
 describe("[CAJA BLANCA] AlertsService.getAlertsForStudent – caminos del grafo de control", () => {
 
   test("Path 1 – sin enrollments ni semanas cargadas: no crea alertas", async () => {
     const repo = makeRepo();
-    const svc  = new AlertsService(repo as any, makeEvents() as any);
+    const svc = new AlertsService(repo as any, makeEvents() as any);
 
     await svc.getAlertsForStudent(1);
 
@@ -175,7 +168,7 @@ describe("[CAJA BLANCA] AlertsService.getAlertsForStudent – caminos del grafo 
     const repo = makeRepo();
     repo.getActiveEnrollmentsWithScores.mockImplementation(async () => [
       // Curso 1: en riesgo (70% avance, promedio 8)
-      makeEnrollment({ course_id: 1, course_name: "Cálculo I",    assessment_weight: "70", score_value: "8" }),
+      makeEnrollment({ course_id: 1, course_name: "Cálculo I", assessment_weight: "70", score_value: "8" }),
       // Curso 2: no en riesgo (promedio 15)
       makeEnrollment({ course_id: 2, course_name: "Programación", assessment_weight: "70", score_value: "15" }),
     ]);
@@ -190,10 +183,7 @@ describe("[CAJA BLANCA] AlertsService.getAlertsForStudent – caminos del grafo 
   });
 });
 
-// ---------------------------------------------------------------------------
-// ============================================================================
 // [B] PRUEBA DE CAJA NEGRA – EnrollmentWithScore payload (> 4 campos)
-// ============================================================================
 // Campos del payload EnrollmentWithScore evaluados:
 //   1. enrollment_id      – identificador de matrícula
 //   2. course_id          – identificador del curso
@@ -202,9 +192,7 @@ describe("[CAJA BLANCA] AlertsService.getAlertsForStudent – caminos del grafo 
 //   5. assessment_id      – null si no hay evaluación → se ignora en agregación
 //   6. assessment_weight  – peso de la evaluación (string, numérico)
 //   7. score_value        – calificación (string, numérico, null si no calificado)
-//
 // Técnica: partición de equivalencia + valores límite de umbrales
-// ---------------------------------------------------------------------------
 describe("[CAJA NEGRA] aggregateCourseScores con payloads EnrollmentWithScore", () => {
 
   test("BN-1 – payload completo y válido: acumula peso y suma ponderada", () => {
@@ -256,9 +244,9 @@ describe("[CAJA NEGRA] aggregateCourseScores con payloads EnrollmentWithScore", 
 
   test("BN-5 – múltiples cursos en la misma respuesta: agrupa correctamente por course_id", () => {
     const rows: ScoreRow[] = [
-      makeScoreRow({ course_id: 1, course_name: "Cálculo I",    assessment_weight: 40, score_value: 10 }),
-      makeScoreRow({ course_id: 2, course_name: "Física I",     assessment_weight: 60, score_value: 8 }),
-      makeScoreRow({ course_id: 1, course_name: "Cálculo I",    assessment_weight: 30, score_value: 12 }),
+      makeScoreRow({ course_id: 1, course_name: "Cálculo I", assessment_weight: 40, score_value: 10 }),
+      makeScoreRow({ course_id: 2, course_name: "Física I", assessment_weight: 60, score_value: 8 }),
+      makeScoreRow({ course_id: 1, course_name: "Cálculo I", assessment_weight: 30, score_value: 12 }),
     ];
 
     const result = aggregateCourseScores(rows);
@@ -281,10 +269,7 @@ describe("[CAJA NEGRA] aggregateCourseScores con payloads EnrollmentWithScore", 
   });
 });
 
-// ---------------------------------------------------------------------------
-// ============================================================================
 // [C] PRUEBAS UNITARIAS – aggregateCourseScores, personalAverage, isAcademicRisk
-// ============================================================================
 describe("[UNIT TEST] Lógica pura de alertas académicas (alerts.logic.ts)", () => {
 
   // --- aggregateCourseScores ---
@@ -331,7 +316,7 @@ describe("[UNIT TEST] Lógica pura de alertas académicas (alerts.logic.ts)", ()
   test("UT-9 – markAlertAsRead delegado al repositorio: retorna true si existe", async () => {
     const repo = makeRepo();
     repo.markAlertAsRead.mockImplementation(async () => true);
-    const svc  = new AlertsService(repo as any, makeEvents() as any);
+    const svc = new AlertsService(repo as any, makeEvents() as any);
 
     const result = await svc.markAlertAsRead(1, 42);
 
@@ -342,7 +327,7 @@ describe("[UNIT TEST] Lógica pura de alertas académicas (alerts.logic.ts)", ()
   test("UT-10 – markAlertAsRead: retorna false si la alerta no pertenece al alumno", async () => {
     const repo = makeRepo();
     repo.markAlertAsRead.mockImplementation(async () => false);
-    const svc  = new AlertsService(repo as any, makeEvents() as any);
+    const svc = new AlertsService(repo as any, makeEvents() as any);
 
     const result = await svc.markAlertAsRead(99, 42);
 

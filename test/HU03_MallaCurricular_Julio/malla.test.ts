@@ -1,7 +1,5 @@
 /**
- * =============================================================================
  * HU1 – Visualización de Malla Curricular Interactiva
- * =============================================================================
  * Archivo : test/malla-curricular/malla.test.ts
  * Runner  : bun test (compatible con Jest API: describe / test / expect)
  *
@@ -9,15 +7,12 @@
  *   [A] CAJA BLANCA  → getCurriculum() del CurriculumService (CC = 6)
  *   [B] CAJA NEGRA   → Payload de actualización de simulación (> 4 campos)
  *   [C] UNIT TESTS   → 6 casos sobre la lógica pura de construcción de la malla
- * =============================================================================
  */
 
 import { describe, test, expect, mock, beforeEach } from "bun:test";
 import { CurriculumService } from "../../src/modules/curriculum/curriculum.service.js";
 
-// ---------------------------------------------------------------------------
 // Helpers de fixtures
-// ---------------------------------------------------------------------------
 const makeCourse = (over: Partial<Record<string, unknown>> = {}) => ({
   id: 1,
   code: "CS101",
@@ -40,23 +35,18 @@ const makePrerequisite = (over: Partial<Record<string, unknown>> = {}) => ({
 
 // Mock base del repositorio (todos los métodos retornan valores neutrales)
 const makeRepo = () => ({
-  findStudentCurriculumId:  mock(async () => 10),
-  // Anotamos el tipo de retorno para que el [] vacío no se infiera como never[]
-  // (si no, los mockImplementation con filas reales no serían asignables).
-  findCurriculumCourses:    mock(async (): Promise<ReturnType<typeof makeCourse>[]> => []),
-  findCoursePrerequisites:  mock(async (): Promise<ReturnType<typeof makePrerequisite>[]> => []),
-  findStudentSimulation:    mock(async (): Promise<{ curriculumCourseId: number; status: string }[]> => []),
+  findStudentCurriculumId: mock(async () => 10),
+  findCurriculumCourses: mock(async () => []),
+  findCoursePrerequisites: mock(async () => []),
+  findStudentSimulation: mock(async () => []),
   courseExistsInCurriculum: mock(async () => true),
-  upsertSimulation:         mock(async () => undefined),
-  deleteSimulation:         mock(async () => undefined),
+  upsertSimulation: mock(async () => undefined),
+  deleteSimulation: mock(async () => undefined),
 });
 
 const makeEvents = () => ({ emit: mock(() => undefined) });
 
-// ---------------------------------------------------------------------------
-// ============================================================================
 // [A] PRUEBA DE CAJA BLANCA – getCurriculum()
-// ============================================================================
 // Complejidad ciclomática del método en CurriculumService.getCurriculum():
 //   Nodo 1 : entrada
 //   Nodo 2 : for (prerequisite of prerequisites)        → +1
@@ -74,13 +64,12 @@ const makeEvents = () => ({ emit: mock(() => undefined) });
 //   Path 4 – required_cycle === 6                        (rama 5 verdadera)
 //   Path 5 – cursos con especialidades (filtro Boolean)
 //   Path 6 – simulación no vacía (simulation.map)
-// ---------------------------------------------------------------------------
 describe("[CAJA BLANCA] getCurriculum – caminos del grafo de control", () => {
 
   // Path 1: loop de prerrequisitos vacío + courses vacíos
   test("Path 1 – sin cursos ni prerrequisitos: retorna estructuras vacías", async () => {
     const repo = makeRepo();
-    const svc  = new CurriculumService(repo as any, makeEvents() as any);
+    const svc = new CurriculumService(repo as any, makeEvents() as any);
 
     const result = await svc.getCurriculum(1);
 
@@ -181,22 +170,18 @@ describe("[CAJA BLANCA] getCurriculum – caminos del grafo de control", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// ============================================================================
 // [B] PRUEBA DE CAJA NEGRA – Payload de simulación (> 4 campos de entrada)
-// ============================================================================
 // Campos del payload evaluados:
 //   1. studentId       (número entero positivo)
 //   2. curriculumCourseId (número entero positivo)
 //   3. status          (enum: planned | simulated_completed | simulated_available)
 //   4. curriculumId    (resuelto internamente; simulamos distintos valores)
 //   5. courseExists    (boolean que depende de la BD)
-// ---------------------------------------------------------------------------
 describe("[CAJA NEGRA] updateSimulation – particiones de equivalencia del payload", () => {
 
   test("BB-1 – payload válido con status 'planned': persiste y devuelve confirmación", async () => {
     const repo = makeRepo();
-    const svc  = new CurriculumService(repo as any, makeEvents() as any);
+    const svc = new CurriculumService(repo as any, makeEvents() as any);
 
     const result = await svc.updateSimulation(1, 10, "planned");
 
@@ -208,7 +193,7 @@ describe("[CAJA NEGRA] updateSimulation – particiones de equivalencia del payl
 
   test("BB-2 – payload válido con status 'simulated_completed': persiste correctamente", async () => {
     const repo = makeRepo();
-    const svc  = new CurriculumService(repo as any, makeEvents() as any);
+    const svc = new CurriculumService(repo as any, makeEvents() as any);
 
     const result = await svc.updateSimulation(2, 20, "simulated_completed");
 
@@ -218,7 +203,7 @@ describe("[CAJA NEGRA] updateSimulation – particiones de equivalencia del payl
 
   test("BB-3 – payload válido con status 'simulated_available': persiste correctamente", async () => {
     const repo = makeRepo();
-    const svc  = new CurriculumService(repo as any, makeEvents() as any);
+    const svc = new CurriculumService(repo as any, makeEvents() as any);
 
     const result = await svc.updateSimulation(3, 30, "simulated_available");
 
@@ -239,7 +224,7 @@ describe("[CAJA NEGRA] updateSimulation – particiones de equivalencia del payl
 
   test("BB-5 – deleteSimulation con curso existente: elimina y retorna mensaje", async () => {
     const repo = makeRepo();
-    const svc  = new CurriculumService(repo as any, makeEvents() as any);
+    const svc = new CurriculumService(repo as any, makeEvents() as any);
 
     const result = await svc.deleteSimulation(1, 10);
 
@@ -257,10 +242,7 @@ describe("[CAJA NEGRA] updateSimulation – particiones de equivalencia del payl
   });
 });
 
-// ---------------------------------------------------------------------------
-// ============================================================================
 // [C] PRUEBAS UNITARIAS – Método getCurriculum (al menos 4 casos)
-// ============================================================================
 describe("[UNIT TEST] getCurriculum – casos de prueba independientes", () => {
 
   test("UT-1 – alumno sin especialidad: courses electivos NO aparecen en specialties", async () => {
