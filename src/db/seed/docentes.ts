@@ -11,7 +11,7 @@
 //   STUDENT_CODE=20235218      código del alumno cuya sección de ISW2 se usa
 //   TARGET_SECTION_ID=123      fija la sección objetivo (si hay ambigüedad)
 //   PROF_USERNAME=hquintan     fuerza el usuario del profesor
-//   JP_FULLNAME="Lo Li, Aaron" nombre del JP (formato "Apellidos, Nombres")
+//   JP_FULLNAME="Lo Li, Aron" nombre del JP (formato "Apellidos, Nombres")
 //   JP_USERNAME=alo            fuerza el usuario del JP
 //
 // Contraseñas (REQUERIDAS, sin default en el código para no versionar credenciales):
@@ -40,7 +40,7 @@ const sql = postgres(DATABASE_URL);
 const APPLY = process.argv.includes("--apply");
 const STUDENT_CODE = process.env.STUDENT_CODE ?? "20235218";
 const TARGET_SECTION_ID = process.env.TARGET_SECTION_ID ? Number(process.env.TARGET_SECTION_ID) : null;
-const JP_FULLNAME = process.env.JP_FULLNAME ?? "Lo Li, Aaron";
+const JP_FULLNAME = process.env.JP_FULLNAME ?? "Lo Li, Aron";
 // Contraseñas: se leen del entorno, SIN default hardcodeado, para no versionar
 // credenciales en un repo público. Definir antes de correr el seed.
 const PROF_PASSWORD = process.env.PROF_PASSWORD;

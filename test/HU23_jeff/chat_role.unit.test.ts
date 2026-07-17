@@ -80,7 +80,7 @@ describe("studentRoleFromPosition", () => {
 describe("buildParticipant", () => {
   test("arma uid/userId desde user_id y deriva label/weight/moderator del rol", () => {
     const p = buildParticipant(
-      { user_id: 293, full_name: "Lo Li, Aaron" },
+      { user_id: 293, full_name: "Lo Li, Aron" },
       1,
       "jp",
     );
@@ -88,7 +88,7 @@ describe("buildParticipant", () => {
       uid: "293",
       userId: 293,
       sectionId: 1,
-      displayName: "Lo Li, Aaron",
+      displayName: "Lo Li, Aron",
       role: "jp",
       roleLabel: "Jefe de Práctica",
       isModerator: true,

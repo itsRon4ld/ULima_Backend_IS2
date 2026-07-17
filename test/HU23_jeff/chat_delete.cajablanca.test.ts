@@ -66,7 +66,7 @@ beforeEach(() => {
 });
 
 const jp: ChatParticipant = buildParticipant(
-  { user_id: 293, full_name: "Lo Li, Aaron" },
+  { user_id: 293, full_name: "Lo Li, Aron" },
   1,
   "jp",
 );
