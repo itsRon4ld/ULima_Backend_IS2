@@ -1,9 +1,3 @@
-// Pruebas de la lógica pura de asesorías (HU18). Cubren las reglas de dominio
-// del issue #30 (casos 3/5 de exclusividad del JP se validan aquí; 1/2/4/7 son
-// de autorización en el service; 8 es de presentación) y las de creación:
-// rango horario, fecha, ubicación por modalidad y SOLAPE en las 4 posiciones
-// (antes/después/contenido/bordes) que pide la rúbrica de prueba unitaria.
-
 import { describe, expect, test } from "bun:test";
 import {
   hasRequiredLocation,
@@ -17,6 +11,25 @@ import {
   validateCreateAdvising,
   type ExistingAdvising,
 } from "../../src/modules/advising/teacher/teacher.logic.js";
+
+/**
+ * ============================================================================
+ * PRUEBA UNITARIA + CAJA BLANCA — Lógica pura de asesorías del docente (HU18)
+ * Fuente: src/modules/advising/teacher/teacher.logic.ts
+ * ============================================================================
+ * Prueba AISLADA (sin BD) las reglas de dominio de las asesorías extra que el
+ * docente publica:
+ *   - isoDayOfWeek()       : fecha -> día ISO (1=Lun … 7=Dom), sin desfase horario.
+ *   - isValidTimeRange()   : inicio < fin (bordes iguales = inválido).
+ *   - rangesOverlap()      : SOLAPE en las 4 posiciones (empieza-antes / empieza-
+ *                            dentro / contenido / contiene) + bordes que se tocan = NO solapa.
+ *   - isDateWithinPeriod() / isDateInPast() : ventana del período (inclusive) y "pasado".
+ *   - limaDateString()     : instante UTC -> fecha en Lima (UTC-5).
+ *   - hasRequiredLocation(): classroom exige aula, virtual exige enlace, hybrid al menos uno.
+ *   - jpViolatesCycleRule(): un profesor del ciclo no puede ser JP (regla issue #30, caso 5).
+ *   - validateCreateAdvising(): orquesta todo respetando la PRECEDENCIA
+ *     invalid_time > date_in_past > date_out_of_period > missing_location > overlap.
+ */
 
 describe("isoDayOfWeek", () => {
   test("mapea a ISO 1=Lunes … 7=Domingo sin desfase horario", () => {
@@ -113,14 +126,15 @@ describe("jpViolatesCycleRule (caso 5 del issue #30)", () => {
 });
 
 describe("validateCreateAdvising", () => {
-  const period = { periodStart: "2026-03-01", periodEnd: "2026-07-31" };
-  const today = "2026-07-06";
+  const period = { periodStart: "2026-03-01", periodEnd: "2026-07-31" }; // ventana del ciclo
+  const today = "2026-07-06";                                            // "hoy" fijo (determinista)
+  // Entrada VÁLIDA base: cada test la clona y rompe un solo campo para forzar un status.
   const okInput = {
-    sessionDate: "2026-07-10",
+    sessionDate: "2026-07-10",       // futuro, dentro del período (viernes)
     startTime: "10:00",
-    endTime: "11:00",
-    modality: "classroom" as const,
-    classroom: "T-501",
+    endTime: "11:00",                // rango horario válido (inicio < fin)
+    modality: "classroom" as const,  // presencial -> exige aula
+    classroom: "T-501",              // aula presente (cumple la ubicación)
     meetingUrl: null,
   };
 

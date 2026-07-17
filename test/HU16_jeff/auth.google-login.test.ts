@@ -6,6 +6,28 @@ import type { AuthRepository } from "../../src/modules/auth/auth.repository.js";
 import { AuthService, type GoogleTokenVerifier } from "../../src/modules/auth/auth.service.js";
 import type { AuthUser, TeacherAuthUser } from "../../src/modules/auth/auth.types.js";
 
+/**
+ * ============================================================================
+ * CAJA NEGRA + FLUJO DE DATOS — AuthService.loginWithGoogle() (HU16: login con Google)
+ * Fuente: src/modules/auth/auth.service.ts
+ * ============================================================================
+ * Se prueba el login con Google desde los REQUISITOS, aislando el verificador
+ * de Google (doble que devuelve el payload que el test quiere) y el repositorio
+ * (falso, con un espía `calls` que registra a quién se consultó/vinculó/emitió).
+ * Así se verifica NO solo el resultado sino el FLUJO DE DATOS: qué correos se
+ * consultaron, si se vinculó el google_id, si se pidió matrícula, etc.
+ *
+ * Partición por DOMINIO del correo + estado del perfil:
+ *   - @aloe.ulima.edu.pe (alumno): exige perfil + matrícula activa -> JWT de alumno.
+ *   - @ulima.edu.pe (docente): exige perfil vinculado; NO pide matrícula -> JWT docente.
+ *   - dominio inválido -> 403 INVALID_DOMAIN sin consultar perfiles (defensa temprana).
+ *   - sin email / email vacío tras normalizar / token rechazado por Google -> 401 INVALID_TOKEN.
+ *
+ * Casos (12): alumno OK, docente OK (normaliza mayúsculas/espacios), alumno sin
+ * perfil (401), alumno sin matrícula (403 NOT_ENROLLED), docente sin perfil (401),
+ * 4 dominios inválidos (403), sin email (401), token rechazado (401), correo vacío (401).
+ */
+
 type GooglePayload = {
   email?: string;
   sub?: string;
@@ -176,25 +198,26 @@ describe("AuthService.loginWithGoogle", () => {
       { student, nextTokenVersion: 8 },
     );
 
-    const result = await service.loginWithGoogle({ idToken: "google-id-token" });
-    const claims = claimsFrom(result.token);
+    const result = await service.loginWithGoogle({ idToken: "google-id-token" }); // corre el login con el token de Google
+    const claims = claimsFrom(result.token);                       // decodifica el JWT emitido para inspeccionar sus claims
 
-    expect(result.user.role).toBe("student");
-    expect(result.user.tokenVersion).toBe(8);
-    expect(claims.sub).toBe(student.id);
-    expect(claims.studentId).toBe(student.studentId);
-    expect(claims.teacherId).toBeUndefined();
+    expect(result.user.role).toBe("student");                      // el usuario resultante es alumno
+    expect(result.user.tokenVersion).toBe(8);                      // trae la nueva versión de token (recién incrementada)
+    expect(claims.sub).toBe(student.id);                           // sub = id de app_user
+    expect(claims.studentId).toBe(student.studentId);              // token de alumno lleva studentId
+    expect(claims.teacherId).toBeUndefined();                      // …y NO teacherId
     expect(claims.role).toBe("student");
-    expect(claims.tokenVersion).toBe(8);
+    expect(claims.tokenVersion).toBe(8);                           // la claim refleja la versión nueva
 
-    expect(calls.studentEmails).toEqual(["20235218@aloe.ulima.edu.pe"]);
-    expect(calls.teacherEmails).toEqual([]);
+    // FLUJO DE DATOS (lo que el servicio consultó, en orden):
+    expect(calls.studentEmails).toEqual(["20235218@aloe.ulima.edu.pe"]); // buscó el perfil de alumno por correo
+    expect(calls.teacherEmails).toEqual([]);                       // NO tocó el camino docente
     expect(calls.linkedGoogleIds).toEqual([
-      { userId: student.id, googleId: "google-student-101" },
+      { userId: student.id, googleId: "google-student-101" },      // vinculó el google_id (sub) a la cuenta
     ]);
-    expect(calls.enrollmentStudentIds).toEqual([student.studentId]);
-    expect(calls.representationStudentIds).toEqual([student.studentId]);
-    expect(calls.incrementedUserIds).toEqual([student.id]);
+    expect(calls.enrollmentStudentIds).toEqual([student.studentId]);     // verificó la matrícula activa
+    expect(calls.representationStudentIds).toEqual([student.studentId]); // resolvió su representación (rol)
+    expect(calls.incrementedUserIds).toEqual([student.id]);        // incrementó el token_version (invalida sesiones previas)
   });
 
   test("docente @ulima.edu.pe se normaliza, omite reglas de alumno y emite JWT docente", async () => {

@@ -23,6 +23,13 @@ import type { AttendanceRiskRawRow } from "../../src/modules/attendance-risk/att
  *
  * Los casos frontera (25% exacto, mismo % en ciclo 5 vs 6, margen impar para
  * el ceil) matan los mutantes > → >=, >= → >, ceil → floor.
+ *
+ * ⭐ CASOS PRIORITARIOS PARA LA RÚBRICA (4):
+ *   1. Cambio del límite de inasistencia en ciclo 6 (25% → 35%).
+ *   2. Frontera exacta del 25% y comparación estricta.
+ *   3. Margen impar calculado con ceil en las faltas restantes.
+ *   4. Protección ante una sección con cero horas dictadas.
+ * Los demás casos se conservan como cobertura complementaria.
  */
 
 const noopEvents = {} as unknown as EventBus;
@@ -52,6 +59,7 @@ describe("PU-I1 · límite por ciclo y frontera de 'impedido' (HU22)", () => {
     expect(res.students[0].missingFaltas).toBeNull();
   });
 
+  // ⭐ PRIORITARIO 1/4: valida la regla especial del límite para ciclos 6+.
   test("ciclo 6 con el MISMO 30% -> NO impedido (el límite sube a 35%): queda en_riesgo a 3 faltas", async () => {
     // margen = 35h - 30h = 5h -> ceil(5/2) = 3 faltas
     const res = await serviceWith([row({ absent_hours: "30", cycle: 6 })]).getAttendanceRisk(1);
@@ -60,6 +68,7 @@ describe("PU-I1 · límite por ciclo y frontera de 'impedido' (HU22)", () => {
     expect(res.students[0].missingFaltas).toBe(3);
   });
 
+  // ⭐ PRIORITARIO 2/4: prueba la frontera y mata el mutante > → >=.
   test("frontera: exactamente 25% en ciclo 3 -> NO impedido (la comparación es estricta '>')", async () => {
     // margen 0h -> 0 faltas restantes (ni 2 ni 3) -> normal
     const res = await serviceWith([row({ absent_hours: "25" })]).getAttendanceRisk(1);
@@ -87,6 +96,7 @@ describe("PU-I2 · en_riesgo, faltas restantes y guarda de división por cero (H
     expect(res.students[0].missingFaltas).toBe(2);
   });
 
+  // ⭐ PRIORITARIO 3/4: distingue ceil de floor al calcular faltas restantes.
   test("margen impar: 22h/100h -> ceil(3/2) = 2 faltas -> en_riesgo (mata el mutante ceil→floor)", async () => {
     const res = await serviceWith([row({ absent_hours: "22" })]).getAttendanceRisk(1);
 
@@ -102,6 +112,7 @@ describe("PU-I2 · en_riesgo, faltas restantes y guarda de división por cero (H
     expect(res.students[0].missingFaltas).toBeNull();
   });
 
+  // ⭐ PRIORITARIO 4/4: cubre el dato extremo que podría producir una división por cero.
   test("sección con 0 horas dictadas -> normal con 0% (sin NaN ni división por cero)", async () => {
     const res = await serviceWith([
       row({ absent_hours: "4", total_section_hours: "0" }),

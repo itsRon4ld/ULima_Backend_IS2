@@ -42,18 +42,21 @@ import type { AuthUserWithPassword, TeacherAuthUserWithPassword } from "../../sr
  * | C8| P7 (error no-HttpError)                  | el repo lanza (fallo de BD)       | 500 INTERNAL_ERROR   |
  */
 
+// Contraseña en texto plano que usamos en todos los caminos "felices". El servicio la compara con bcrypt.compare contra el HASH de abajo.
 const PASSWORD = "correcta2026";
+// Hash bcrypt REAL de esa contraseña (costo 10, el mismo que usa app_user). Así el bcrypt.compare del servicio se ejecuta de verdad, no mockeado.
 const HASH = bcrypt.hashSync(PASSWORD, 10);
 
+// Fixture de ALUMNO: fabrica el objeto que devolvería findByCodeWithPassword para un estudiante válido. Es función (no constante) para que cada test tenga una copia fresca sin arrastrar mutaciones.
 const student = (): AuthUserWithPassword => ({
-  id: 11,
-  studentId: 101,
-  code: "20235218",
-  tokenVersion: 4,
+  id: 11, // id de la fila app_user (lo que el servicio incrementa el tokenVersion)
+  studentId: 101, // id de estudiante: lo que va en la claim studentId del JWT
+  code: "20235218", // código de alumno con el que inicia sesión
+  tokenVersion: 4, // versión previa del token (el servicio la reemplaza por la nueva)
   fullName: "Jefferson Sanchez",
   firstName: "Jefferson",
   lastName: "Sanchez",
-  institutionalEmail: "20235218@aloe.ulima.edu.pe",
+  institutionalEmail: "20235218@aloe.ulima.edu.pe", // dominio de alumno @aloe.ulima.edu.pe
   email: "20235218@aloe.ulima.edu.pe",
   role: "student",
   careerId: 1,
@@ -68,61 +71,72 @@ const student = (): AuthUserWithPassword => ({
   especialidades: [],
   specialties: [],
   courseProgress: { approvedLevels: [1, 2, 3, 4], approvedElectives: [], currentCourses: [] },
-  passwordHash: HASH,
+  passwordHash: HASH, // el hash que bcrypt.compare validará; también sirve para comprobar que NO se filtra en la respuesta
 });
 
+// Fixture de DOCENTE (HU18): fabrica el objeto que devolvería findTeacherByCodeWithPassword. Nótese que NO tiene studentId (un usuario es alumno O docente, nunca ambos).
 const teacher = (): TeacherAuthUserWithPassword => ({
-  id: 42,
-  teacherId: 7,
-  code: "hquintan",
-  tokenVersion: 3,
+  id: 42, // id de la fila app_user del docente (el que se incrementa)
+  teacherId: 7, // id de docente: va en la claim teacherId del JWT
+  code: "hquintan", // código docente (inicial + apellido) con el que inicia sesión
+  tokenVersion: 3, // versión previa (el servicio la reemplaza)
   fullName: "Hernan Quintana",
   firstName: "Hernan",
   lastName: "Quintana",
-  institutionalEmail: "hquintan@ulima.edu.pe",
+  institutionalEmail: "hquintan@ulima.edu.pe", // dominio docente @ulima.edu.pe
   email: "hquintan@ulima.edu.pe",
   role: "teacher",
   teacherLabel: "Profesor",
   setupComplete: true,
-  passwordHash: HASH,
+  passwordHash: HASH, // mismo hash: la contraseña correcta es PASSWORD también para el docente
 });
 
+// Opciones del fabricante de servicio: cada campo controla qué devuelve una dependencia del repositorio, para forzar un camino concreto del método login().
 type Options = {
-  student?: AuthUserWithPassword | null;
-  teacher?: TeacherAuthUserWithPassword | null;
-  hasEnrollment?: boolean;
-  representation?: { position: "student" | "delegate" | "subdelegate" | "teacher" } | null;
-  nextTokenVersion?: number;
-  throwOnFind?: boolean;
+  student?: AuthUserWithPassword | null; // qué devuelve findByCodeWithPassword (null => no es alumno => intenta docente)
+  teacher?: TeacherAuthUserWithPassword | null; // qué devuelve findTeacherByCodeWithPassword (null => código inexistente)
+  hasEnrollment?: boolean; // si el alumno tiene matrícula activa (false => 403 NOT_ENROLLED)
+  representation?: { position: "student" | "delegate" | "subdelegate" | "teacher" } | null; // representación activa => rol del token
+  nextTokenVersion?: number; // la nueva versión de token que devuelve incrementTokenVersion
+  throwOnFind?: boolean; // si true, el repo LANZA en la primera consulta (simula fallo de BD => 500)
 };
 
+// Fabricante del servicio bajo prueba: arma un repositorio FALSO (no toca la BD) cuyas respuestas salen de `options`, y devuelve también `calls` para espiar con qué ids se llamó.
 const makeService = (options: Options = {}) => {
+  // Espía de llamadas: acumula los ids con los que el servicio invocó incrementTokenVersion y hasActiveEnrollment (para verificar el flujo de datos).
   const calls = { incrementedUserIds: [] as number[], enrollmentStudentIds: [] as number[] };
   const repository = {
+    // Búsqueda del alumno por código: si throwOnFind está activo simula un fallo de BD; si no, devuelve el fixture (o null).
     findByCodeWithPassword: async () => {
       if (options.throwOnFind) throw new Error("fallo de BD");
       return options.student ?? null;
     },
+    // Búsqueda del docente por código (camino HU18): null cuando el código no existe.
     findTeacherByCodeWithPassword: async () => options.teacher ?? null,
+    // Verificación de matrícula activa: registra el studentId consultado y devuelve el flag (por defecto true).
     hasActiveEnrollment: async (studentId: number) => {
       calls.enrollmentStudentIds.push(studentId);
       return options.hasEnrollment ?? true;
     },
+    // Representación activa del alumno: define si el rol será delegate/subdelegate o (null) student.
     findActiveRepresentation: async () => options.representation ?? null,
+    // Incremento de tokenVersion: registra el userId (para probar que se invalidan sesiones del usuario correcto) y devuelve la versión nueva.
     incrementTokenVersion: async (userId: number) => {
       calls.incrementedUserIds.push(userId);
       return options.nextTokenVersion ?? 9;
     },
-  } as unknown as AuthRepository;
-  return { service: new AuthService(repository, new EventBus()), calls };
+  } as unknown as AuthRepository; // forzamos el tipo: solo implementamos los métodos que login() usa
+  return { service: new AuthService(repository, new EventBus()), calls }; // servicio real + repo falso; EventBus real porque login no depende de eventos
 };
 
+// Helper que verifica y DECODIFICA el JWT emitido, para poder inspeccionar sus claims (role, studentId, teacherId, tokenVersion).
 const claimsFrom = (token: string): JwtPayload => {
-  const claims = jwt.verify(token, config.auth.jwtSecret);
-  if (typeof claims === "string") throw new Error("Se esperaba un JWT con payload JSON");
-  return claims;
+  const claims = jwt.verify(token, config.auth.jwtSecret); // valida la firma con el MISMO secreto que usó el servicio
+  if (typeof claims === "string") throw new Error("Se esperaba un JWT con payload JSON"); // salvaguarda: el payload debe ser objeto, no string
+  return claims; // devuelve el objeto de claims para los expect
 };
 
+// Helper para los caminos de ERROR: ejecuta la promesa, exige que RECHACE, y comprueba el statusCode/code/message exactos del HttpError.
 const expectHttpError = async (
   action: Promise<unknown>,
   statusCode: number,
@@ -130,112 +144,121 @@ const expectHttpError = async (
   message: string,
 ) => {
   try {
-    await action;
-    throw new Error(`Se esperaba ${statusCode} ${code}`);
+    await action; // dispara el login; si NO lanza, el camino de error falló
+    throw new Error(`Se esperaba ${statusCode} ${code}`); // si llegamos aquí, no hubo error => forzamos fallo del test
   } catch (error) {
-    const httpError = error as { statusCode?: number; code?: string; message?: string };
-    expect(httpError.statusCode).toBe(statusCode);
-    expect(httpError.code).toBe(code);
-    expect(httpError.message).toBe(message);
+    const httpError = error as { statusCode?: number; code?: string; message?: string }; // tratamos el error como HttpError para leer sus campos
+    expect(httpError.statusCode).toBe(statusCode); // verifica que el código HTTP sea el esperado (401/403/500)
+    expect(httpError.code).toBe(code); // verifica el código simbólico del error (USER_NOT_FOUND, etc.)
+    expect(httpError.message).toBe(message); // verifica el mensaje exacto que verá el cliente
   }
 };
 
 describe("CAJA BLANCA · AuthService.login()", () => {
+  // C1 · Camino N1(null)->P1(V)->loginTeacher OK: sin alumno pero con docente y contraseña correcta => JWT docente.
   test("C1: código de docente (no alumno) con contraseña correcta → JWT docente", async () => {
+    // student: null fuerza el desvío a loginTeacher; nextTokenVersion: 4 es la versión que se firmará.
     const { service, calls } = makeService({ student: null, teacher: teacher(), nextTokenVersion: 4 });
-    const result = await service.login({ code: "hquintan", password: PASSWORD });
-    const claims = claimsFrom(result.token);
-    expect(claims.role).toBe("teacher");
-    expect(claims.teacherId).toBe(7);
-    expect(claims.studentId).toBeUndefined(); // token docente NO lleva studentId
-    expect(claims.tokenVersion).toBe(4); // versión nueva (recién incrementada)
-    expect(result.tokenType).toBe("Bearer");
-    expect(calls.incrementedUserIds).toEqual([42]);
-    expect("passwordHash" in result.user).toBe(false); // no se filtra el hash
+    const result = await service.login({ code: "hquintan", password: PASSWORD }); // login con código y contraseña correctos del docente
+    const claims = claimsFrom(result.token); // decodifica el JWT para inspeccionar sus claims
+    expect(claims.role).toBe("teacher"); // verifica que el rol emitido sea docente
+    expect(claims.teacherId).toBe(7); // verifica que lleve el teacherId del fixture
+    expect(claims.studentId).toBeUndefined(); // verifica que el token docente NO lleve studentId
+    expect(claims.tokenVersion).toBe(4); // verifica que use la versión NUEVA recién incrementada (no la vieja 3)
+    expect(result.tokenType).toBe("Bearer"); // verifica el tipo de token de la respuesta
+    expect(calls.incrementedUserIds).toEqual([42]); // verifica que se invalidaran sesiones del app_user docente (id 42)
+    expect("passwordHash" in result.user).toBe(false); // verifica que la respuesta NO filtre el hash de la contraseña
   });
 
+  // C2 · Camino ...loginTeacher P2(V): ni alumno ni docente existen => 401 USER_NOT_FOUND.
   test("C2: código inexistente (ni alumno ni docente) → 401 USER_NOT_FOUND", async () => {
-    const { service } = makeService({ student: null, teacher: null });
+    const { service } = makeService({ student: null, teacher: null }); // ambas búsquedas devuelven null
     await expectHttpError(
-      service.login({ code: "zzz", password: PASSWORD }),
-      401,
-      "USER_NOT_FOUND",
-      "Código no encontrado en la base de datos.",
+      service.login({ code: "zzz", password: PASSWORD }), // código que no corresponde a nadie
+      401, // verifica status 401
+      "USER_NOT_FOUND", // verifica el código de error
+      "Código no encontrado en la base de datos.", // verifica el mensaje exacto
     );
   });
 
+  // C3 · Camino ...loginTeacher P3(V): docente existe pero contraseña no coincide => 401 INVALID_PASSWORD.
   test("C3: docente con contraseña incorrecta → 401 INVALID_PASSWORD", async () => {
-    const { service } = makeService({ student: null, teacher: teacher() });
+    const { service } = makeService({ student: null, teacher: teacher() }); // no es alumno, sí docente
     await expectHttpError(
-      service.login({ code: "hquintan", password: "mala" }),
-      401,
-      "INVALID_PASSWORD",
-      "Contraseña incorrecta.",
+      service.login({ code: "hquintan", password: "mala" }), // contraseña que no matchea el HASH
+      401, // verifica status 401
+      "INVALID_PASSWORD", // verifica el código de error
+      "Contraseña incorrecta.", // verifica el mensaje exacto
     );
   });
 
+  // C4 · Camino N1(user)->P4(V): alumno existe pero contraseña no coincide => 401 INVALID_PASSWORD.
   test("C4: alumno con contraseña incorrecta → 401 INVALID_PASSWORD", async () => {
-    const { service } = makeService({ student: student() });
+    const { service } = makeService({ student: student() }); // findByCodeWithPassword devuelve al alumno
     await expectHttpError(
-      service.login({ code: "20235218", password: "mala" }),
-      401,
-      "INVALID_PASSWORD",
-      "Contraseña incorrecta.",
+      service.login({ code: "20235218", password: "mala" }), // contraseña incorrecta del alumno
+      401, // verifica status 401
+      "INVALID_PASSWORD", // verifica el código de error
+      "Contraseña incorrecta.", // verifica el mensaje exacto
     );
   });
 
+  // C5 · Camino ...P4(F)->P5(V): contraseña correcta pero sin matrícula activa => 403 NOT_ENROLLED.
   test("C5: alumno correcto pero sin matrícula activa → 403 NOT_ENROLLED", async () => {
-    const { service, calls } = makeService({ student: student(), hasEnrollment: false });
+    const { service, calls } = makeService({ student: student(), hasEnrollment: false }); // hasEnrollment: false fuerza el 403
     await expectHttpError(
-      service.login({ code: "20235218", password: PASSWORD }),
-      403,
-      "NOT_ENROLLED",
-      "El estudiante no tiene una matrícula activa.",
+      service.login({ code: "20235218", password: PASSWORD }), // credenciales correctas
+      403, // verifica status 403
+      "NOT_ENROLLED", // verifica el código de error
+      "El estudiante no tiene una matrícula activa.", // verifica el mensaje exacto
     );
-    expect(calls.enrollmentStudentIds).toEqual([101]);
+    expect(calls.enrollmentStudentIds).toEqual([101]); // verifica que se consultó la matrícula con el studentId correcto (101)
   });
 
+  // C6 · Camino ...P5(F)->P6(representación): alumno con representación activa => rol delegate en un JWT de alumno.
   test("C6: alumno con representación activa → rol delegate y JWT de alumno", async () => {
     const { service, calls } = makeService({
       student: student(),
-      representation: { position: "delegate" },
-      nextTokenVersion: 5,
+      representation: { position: "delegate" }, // representación activa => el rol pasa a "delegate"
+      nextTokenVersion: 5, // versión nueva a firmar
     });
-    const result = await service.login({ code: "20235218", password: PASSWORD });
-    const claims = claimsFrom(result.token);
-    expect(claims.role).toBe("delegate");
-    expect(claims.studentId).toBe(101);
-    expect(claims.teacherId).toBeUndefined();
-    expect(claims.tokenVersion).toBe(5);
-    expect(result.tokenType).toBe("Bearer");
-    expect(result.user.role).toBe("delegate");
-    expect("passwordHash" in result.user).toBe(false);
-    expect(calls.incrementedUserIds).toEqual([11]);
+    const result = await service.login({ code: "20235218", password: PASSWORD }); // login exitoso del alumno delegado
+    const claims = claimsFrom(result.token); // decodifica el JWT
+    expect(claims.role).toBe("delegate"); // verifica que el rol del token venga de la representación
+    expect(claims.studentId).toBe(101); // verifica que sea un token de ALUMNO (lleva studentId)
+    expect(claims.teacherId).toBeUndefined(); // verifica que NO lleve teacherId (no es docente)
+    expect(claims.tokenVersion).toBe(5); // verifica que use la versión nueva firmada
+    expect(result.tokenType).toBe("Bearer"); // verifica el tipo de token
+    expect(result.user.role).toBe("delegate"); // verifica que el objeto user devuelto también tenga rol delegate
+    expect("passwordHash" in result.user).toBe(false); // verifica que no se filtre el hash
+    expect(calls.incrementedUserIds).toEqual([11]); // verifica que se invalidaran sesiones del app_user alumno (id 11)
   });
 
+  // C7 · Camino ...P6(?? "student"): sin representación => el rol cae al valor por defecto "student".
   test("C7: alumno sin representación → rol 'student' por defecto (?? 'student')", async () => {
-    const { service } = makeService({ student: student(), representation: null });
-    const result = await service.login({ code: "20235218", password: PASSWORD });
-    expect(claimsFrom(result.token).role).toBe("student");
-    expect(result.user.role).toBe("student");
+    const { service } = makeService({ student: student(), representation: null }); // representation null => rama del ?? "student"
+    const result = await service.login({ code: "20235218", password: PASSWORD }); // login exitoso
+    expect(claimsFrom(result.token).role).toBe("student"); // verifica que el rol del token sea el default "student"
+    expect(result.user.role).toBe("student"); // verifica que el user devuelto también tenga rol student
   });
 
+  // C8 · Camino P7 (error no-HttpError): el repo lanza un Error genérico => se traduce a 500 INTERNAL_ERROR y se loguea.
   test("C8: error no-HttpError del repositorio (fallo de BD) → 500 INTERNAL_ERROR", async () => {
-    const { service } = makeService({ throwOnFind: true });
-    const consoleError = spyOn(console, "error").mockImplementation(() => {});
+    const { service } = makeService({ throwOnFind: true }); // throwOnFind hace que findByCodeWithPassword lance
+    const consoleError = spyOn(console, "error").mockImplementation(() => {}); // espía console.error y silencia el ruido en la consola del test
 
     try {
       await expectHttpError(
-        service.login({ code: "20235218", password: PASSWORD }),
-        500,
-        "INTERNAL_ERROR",
-        "Error interno del servidor.",
+        service.login({ code: "20235218", password: PASSWORD }), // el fallo de BD debe convertirse en HttpError 500
+        500, // verifica status 500
+        "INTERNAL_ERROR", // verifica el código de error
+        "Error interno del servidor.", // verifica el mensaje genérico (no filtra detalles internos)
       );
-      expect(consoleError).toHaveBeenCalledTimes(1);
-      expect(consoleError.mock.calls[0]?.[0]).toBe("DB Error in auth.service login");
-      expect(consoleError.mock.calls[0]?.[1]).toBeInstanceOf(Error);
+      expect(consoleError).toHaveBeenCalledTimes(1); // verifica que el error se logueó exactamente una vez
+      expect(consoleError.mock.calls[0]?.[0]).toBe("DB Error in auth.service login"); // verifica el prefijo del log
+      expect(consoleError.mock.calls[0]?.[1]).toBeInstanceOf(Error); // verifica que el segundo argumento sea el Error original
     } finally {
-      consoleError.mockRestore();
+      consoleError.mockRestore(); // restaura console.error pase lo que pase (no ensucia otros tests)
     }
   });
 });

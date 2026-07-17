@@ -5,9 +5,37 @@ import { buildParticipant } from "../../src/modules/chat/chat.logic.js";
 import type { ChatParticipant } from "../../src/modules/chat/chat.types.js";
 import { firebaseService } from "../../src/services/firebase.service.js";
 
-let mirrored: ChatParticipant[] = [];
+/**
+ * ============================================================================
+ * CAJA BLANCA — Autorización del chat: ChatController.deleteMessage() +
+ *               ChatController.createFirebaseToken()  (HU23)
+ * Fuente: src/modules/chat/chat.controller.ts
+ * ============================================================================
+ * Se recorre cada camino de AUTORIZACIÓN, aislando Firebase (se reemplazan sus
+ * métodos por espías) y la BD (repositorio falso); no hay red ni base real.
+ *
+ * deleteMessage — solo el PROFESOR TITULAR borra (borrado suave = "lápida"):
+ *   P1  profesor titular          -> borra, escribe la lápida, responde deletedBy
+ *   P2  sin teacherId (no docente)-> 403 CHAT_DELETE_FORBIDDEN
+ *   P3  docente que no dicta       -> 403 (repo devuelve null)
+ *   P4  JP (rol != teacher)        -> 403 (solo el titular, no el JP)
+ *   P5  userId del JWT != participante -> 403 (anti-suplantación)
+ *   P6  mensaje inexistente        -> 404 CHAT_MESSAGE_NOT_FOUND (existed=false)
+ *
+ * createFirebaseToken — solo un participante de la sección obtiene token:
+ *   rechazos (403 CHAT_SECTION_FORBIDDEN): sin teacherId, docente ajeno, alumno
+ *   sin studentId, userId suplantado, y "no escribe /members ni firma si rechaza".
+ *   éxito: profesor (peso 100, moderador) / alumno (peso 10) / delegado (peso 70),
+ *   con el espejo /members escrito y el token firmado con el rol/peso correctos.
+ *
+ * Casos: deleteMessage 6 · createFirebaseToken (rechazo 5 + éxito 3) = 14.
+ */
+
+// --- Espías de Firebase: se reemplazan los métodos reales por dobles que
+//     capturan en memoria lo que el controller intenta escribir/firmar. ---
+let mirrored: ChatParticipant[] = [];                 // captura los /members escritos (espejo de membresía)
 firebaseService.upsertChatMember = async (p: ChatParticipant) => {
-  mirrored.push(p);
+  mirrored.push(p);                                   // en vez de escribir en Firebase, guardamos el participante
 };
 firebaseService.generateCustomToken = async (
   uid: string,

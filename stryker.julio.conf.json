@@ -1,0 +1,18 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Testing de mutación de Julio (HU08 - Alertas académicas): muta la lógica pura de alertas (agregación de notas, umbrales de riesgo) que ejercita la caja blanca getAlertsForStudent y las unitarias. Ejecutar: bunx stryker run --config-file stryker.julio.conf.json",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "bun test test/HU08_julio"
+  },
+  "mutate": [
+    "src/modules/alerts/alerts.logic.ts"
+  ],
+  "coverageAnalysis": "off",
+  "reporters": ["clear-text", "progress", "html"],
+  "htmlReporter": { "fileName": "reports/mutation/julio-alerts.html" },
+  "thresholds": { "high": 90, "low": 80, "break": null },
+  "concurrency": 4,
+  "tempDirName": ".stryker-tmp",
+  "ignorePatterns": ["node_modules", ".stryker-tmp", "reports", "drizzle", "docs", "specs", ".tessl"]
+}

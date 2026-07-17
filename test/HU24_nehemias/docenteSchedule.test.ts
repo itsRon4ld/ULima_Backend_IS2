@@ -8,7 +8,7 @@
  *   ✅ Caja Negra   — validateCourseBlockInput (6 campos de entrada ≥ 4 requeridos)
  *   ✅ Unit Tests   — computeGradesStatus (≥ 4 casos it: éxito, límite, alterno, error)
  *
- * Ejecutar: bun test test/horario-docente/docenteSchedule.test.ts
+ * Ejecutar: bun test test/HU24_nehemias/docenteSchedule.test.ts
  * ════════════════════════════════════════════════════════════════════════════
  */
 

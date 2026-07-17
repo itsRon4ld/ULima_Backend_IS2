@@ -3,6 +3,26 @@ import { z } from "zod";
 import { chatTokenSchema } from "../../src/modules/chat/chat.schemas.js";
 import { deleteParamsSchema } from "../../src/modules/chat/chat.routes.js";
 
+/**
+ * ============================================================================
+ * CAJA NEGRA — Contratos de entrada del chat (esquemas Zod) (HU23)
+ * Fuente: src/modules/chat/chat.schemas.ts y chat.routes.ts
+ * ============================================================================
+ * Se validan los esquemas SIN mirar la implementación: solo entradas y salidas.
+ * Partición de equivalencia + valores límite por campo sobre 3 contratos:
+ *
+ *   - chatTokenSchema      : { sectionId } — entero positivo, con coerce de string.
+ *       válidas: 1, "42" (coerce), 999999 · inválidas: {}, 0, -1, 1.5, "abc", null.
+ *   - deleteParamsSchema   : { sectionId, messageId } — sectionId entero positivo;
+ *       messageId string de 1..200. Bordes: 1 y 200 chars válidos; 0/201 inválidos.
+ *   - createTokenInputSchema (5 campos): sectionId, userId, role(enum teacher|student),
+ *       studentId?, teacherId?. Partición por cada campo + bordes (0, negativo, decimal,
+ *       enum fuera de rango, requeridos ausentes, campos extra ignorados).
+ *
+ * Casos: chatTokenSchema 9 · deleteParamsSchema 11 · createTokenInputSchema 19.
+ */
+
+// Helper: corre schema.safeParse y devuelve el resultado ({ success, data? }).
 const safe = (schema: { safeParse: (v: unknown) => { success: boolean } }, input: unknown) =>
   schema.safeParse(input);
 

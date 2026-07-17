@@ -4,8 +4,27 @@ import type { NetworkingRepository } from "../../src/modules/networking/networki
 import { NetworkingService } from "../../src/modules/networking/networking.service.js";
 import type { NetworkingCard, PublicNetworkingCard } from "../../src/modules/networking/networking.types.js";
 
+/**
+ * ============================================================================
+ * PRUEBA UNITARIA (nivel servicio) — NetworkingService (HU25: carnet de networking)
+ * Fuente: src/modules/networking/networking.service.ts
+ * ============================================================================
+ * Ejercita los 3 métodos públicos del servicio con un repositorio falso (sin BD):
+ *   - getVisibleByUserId(): devuelve el carnet PÚBLICO si está visible; 403
+ *     NETWORKING_CARD_HIDDEN si el dueño lo ocultó.
+ *   - getMine(): el DUEÑO lee su enlace aunque el carnet esté oculto; 404
+ *     USER_NOT_FOUND si no existe; 500 NETWORKING_DATA_INTEGRITY si hay datos
+ *     históricos con más de una red.
+ *   - updateMine(): normaliza el enlace, deriva al dueño del argumento autenticado,
+ *     conserva/elimina la red según optIn, y RECHAZA (antes de escribir) más de
+ *     una red (400), dominio inválido (400) y usuario inexistente (404).
+ */
+
+// EventBus dummy: el test no evalúa eventos.
 const noopEvents = {} as unknown as EventBus;
 
+// Repositorio falso con respuestas neutras por defecto; cada test sobrescribe
+// (`over`) el método que quiere controlar para forzar un caso.
 const fakeRepo = (over: Partial<NetworkingRepository> = {}): NetworkingRepository =>
   ({
     findByUserId: async () => ({ optIn: false, links: [] }),
